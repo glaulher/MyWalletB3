@@ -255,6 +255,30 @@ body {
   color: var(--text-muted);
 }
 
+/* Views Header & Subtitles */
+.view-content {
+  animation: fadeIn 0.15s ease;
+}
+
+.view-header {
+  margin-bottom: 24px;
+}
+
+.view-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 6px;
+  letter-spacing: -0.3px;
+}
+
+.view-subtitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: #16a34a;
+  line-height: 1.5;
+}
+
 /* Cards & Charts */
 .charts-section {
   display: grid;
