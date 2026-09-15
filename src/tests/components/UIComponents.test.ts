@@ -3,8 +3,23 @@ import { Button } from '../../ui/components/Button.ts';
 import { Badge } from '../../ui/components/Badge.ts';
 import { KpiCard } from '../../ui/components/KpiCard.ts';
 import { Banner } from '../../ui/components/Banner.ts';
+import { Icons } from '../../ui/components/Icons.ts';
 
 describe('UI Reusable Components', () => {
+  it('Icons should generate valid SVG strings', () => {
+    const walletSvg = Icons.wallet(20, 'test-class');
+    expect(walletSvg).toContain('<svg');
+    expect(walletSvg).toContain('width="20"');
+    expect(walletSvg).toContain('height="20"');
+    expect(walletSvg).toContain('viewBox="0 0 24 24"');
+    expect(walletSvg).toContain('test-class');
+    expect(walletSvg).toContain('svg-icon');
+
+    const downloadSvg = Icons.download();
+    expect(downloadSvg).toContain('<svg');
+    expect(downloadSvg).toContain('stroke="currentColor"');
+  });
+
   it('Button should generate valid HTML with variants and icons', () => {
     const html = Button.generateHtml({
       label: 'Salvar',

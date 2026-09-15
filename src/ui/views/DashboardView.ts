@@ -5,6 +5,7 @@ import {
 import { TabBar, TabItem } from '../components/TabBar.ts';
 import { Button } from '../components/Button.ts';
 import { Banner } from '../components/Banner.ts';
+import { Icons } from '../components/Icons.ts';
 import { PortfolioView } from './PortfolioView.ts';
 import { OperationsView } from './OperationsView.ts';
 import { DarfView } from './DarfView.ts';
@@ -19,11 +20,11 @@ export class DashboardView {
   private activeTabId = 'wallet';
 
   private tabs: TabItem[] = [
-    { id: 'wallet', label: 'Carteira', icon: '📊' },
-    { id: 'operations', label: 'Extrato', icon: '📋' },
-    { id: 'darf', label: 'Calculadora DARF', icon: '🧾' },
-    { id: 'irpf', label: 'Informe IRPF', icon: '📑' },
-    { id: 'backup', label: 'Backup & Dados', icon: '💾' },
+    { id: 'wallet', label: 'Carteira', icon: Icons.wallet(16) },
+    { id: 'operations', label: 'Extrato', icon: Icons.fileText(16) },
+    { id: 'darf', label: 'Calculadora DARF', icon: Icons.calculator(16) },
+    { id: 'irpf', label: 'Informe IRPF', icon: Icons.fileSpreadsheet(16) },
+    { id: 'backup', label: 'Backup & Dados', icon: Icons.database(16) },
   ];
 
   constructor(container: HTMLElement, controller: DashboardController) {
@@ -39,7 +40,7 @@ export class DashboardView {
         <header class="app-header">
           <div class="header-left">
             <div class="app-brand">
-              <span class="brand-icon">📈</span>
+              <span class="brand-icon">${Icons.trendingUp(24)}</span>
               <div>
                 <h1 class="brand-title">MyWalletB3</h1>
                 <p class="brand-subtitle">Gestão de Carteira, Preço Médio e Fiscal B3</p>
@@ -51,13 +52,13 @@ export class DashboardView {
             ${Button.generateHtml({
               id: 'btn-upload',
               label: 'Subir Planilha B3 (.xlsx/.csv)',
-              icon: '📁',
+              icon: Icons.upload(16),
               variant: 'primary',
             })}
             ${Button.generateHtml({
               id: 'btn-rollback',
               label: 'Desfazer Último Lote',
-              icon: '↩️',
+              icon: Icons.undo(16),
               variant: 'secondary',
               className: summary.lastBatch ? '' : 'hidden-el',
               title: 'Desfazer a última planilha importada e restaurar o estado anterior',
@@ -74,7 +75,7 @@ export class DashboardView {
               ? `
             <div class="batch-banner">
               <div class="batch-chip">
-                <span class="batch-chip-icon">🛡️</span>
+                <span class="batch-chip-icon">${Icons.shieldCheck(14)}</span>
                 <span>Ponto de restauração: <strong>${summary.lastBatch.fileName}</strong> (${summary.lastBatch.importedAt.toLocaleString('pt-BR')})</span>
               </div>
             </div>

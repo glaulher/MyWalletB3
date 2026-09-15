@@ -3,6 +3,7 @@ import { IOperationRepository } from '../../core/repositories/IOperationReposito
 import { PersistentOperationRepository } from '../../infrastructure/repositories/PersistentOperationRepository.ts';
 import { Badge } from '../components/Badge.ts';
 import { KpiCard } from '../components/KpiCard.ts';
+import { Icons } from '../components/Icons.ts';
 
 export class DarfView {
   private container: HTMLElement;
@@ -30,7 +31,7 @@ export class DarfView {
       <div class="view-content">
         <div class="view-header">
           <div>
-            <h2 class="view-title">🧾 Calculadora e Apuração de DARF</h2>
+            <h2 class="view-title">${Icons.calculator(22)} Calculadora e Apuração de DARF</h2>
             <p class="view-subtitle">Apuração mensal segundo regras da B3/Receita: Ações Swing 15% (isenção até R$ 20k), Day Trade 20%, Opções Swing 15% (sem isenção), Units (ex: TAEE11) 20% fixa, BDRs 20% fixa e FIIs 20% fixa.</p>
           </div>
         </div>
@@ -39,25 +40,25 @@ export class DarfView {
         <div class="kpi-grid">
           ${KpiCard.generateHtml({
             title: 'Total de Imposto Devido',
-            icon: '💰',
+            icon: Icons.dollarSign(18),
             value: `R$ ${totalTaxDue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             subtext: `${monthsWithTax} meses com imposto a pagar`,
           })}
           ${KpiCard.generateHtml({
             title: 'Meses com Venda',
-            icon: '📅',
+            icon: Icons.calendar(18),
             value: String(darfs.length),
             subtext: 'Competências apuradas',
           })}
           ${KpiCard.generateHtml({
             title: 'Prejuízo a Compensar',
-            icon: '📉',
+            icon: Icons.trendingDown(18, 'text-danger'),
             value: `R$ ${accumulatedLoss.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
             subtext: 'Saldo acumulado para meses futuros',
           })}
           ${KpiCard.generateHtml({
             title: 'Código da Receita',
-            icon: '🏷️',
+            icon: Icons.tag(18),
             value: '6015',
             subtext: 'Pessoa Física - Ganhos Líquidos em Bolsa',
           })}

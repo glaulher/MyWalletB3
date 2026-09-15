@@ -4,6 +4,7 @@ import { PersistentOperationRepository } from '../../infrastructure/repositories
 import { AveragePriceCalculator } from '../../core/services/AveragePriceCalculator.ts';
 import { Badge } from '../components/Badge.ts';
 import { KpiCard } from '../components/KpiCard.ts';
+import { Icons } from '../components/Icons.ts';
 
 export class OperationsView {
   private container: HTMLElement;
@@ -50,7 +51,7 @@ export class OperationsView {
       <div class="view-content">
         <div class="view-header">
           <div>
-            <h2 class="view-title">📋 Extrato de Operações</h2>
+            <h2 class="view-title">${Icons.fileText(22)} Extrato de Operações</h2>
             <p class="view-subtitle">Histórico ordenado por Tipo (Compra antes de Venda) e Data do Negócio (mais antigo para mais novo).</p>
           </div>
         </div>
@@ -59,19 +60,19 @@ export class OperationsView {
         <div class="kpi-grid">
           ${KpiCard.generateHtml({
             title: 'Volume de Compras',
-            icon: '🟢',
+            icon: Icons.arrowUpRight(18, 'text-success'),
             value: `R$ ${totalBuyValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             subtext: `${filteredOps.filter((o) => o.type === 'buy').length} ordens de compra`,
           })}
           ${KpiCard.generateHtml({
             title: 'Volume de Vendas',
-            icon: '🔴',
+            icon: Icons.arrowDownRight(18, 'text-danger'),
             value: `R$ ${totalSellValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             subtext: `${filteredOps.filter((o) => o.type === 'sell').length} ordens de venda`,
           })}
           ${KpiCard.generateHtml({
             title: 'Operações Filtradas',
-            icon: '🔍',
+            icon: Icons.search(18),
             value: String(filteredOps.length),
             subtext: `de ${sortedOps.length} registros no total`,
           })}

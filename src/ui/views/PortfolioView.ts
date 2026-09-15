@@ -3,6 +3,7 @@ import { AllocationChart, SliceData } from '../components/AllocationChart.ts';
 import { ColumnChart, ColumnChartItem } from '../components/ColumnChart.ts';
 import { Badge } from '../components/Badge.ts';
 import { KpiCard } from '../components/KpiCard.ts';
+import { Icons } from '../components/Icons.ts';
 
 export class PortfolioView {
   private container: HTMLElement;
@@ -15,7 +16,7 @@ export class PortfolioView {
     if (summary.totalOperations === 0) {
       this.container.innerHTML = `
         <div class="empty-state">
-          <div class="empty-state-icon">📊</div>
+          <div class="empty-state-icon">${Icons.barChart(36)}</div>
           <h2>Nenhuma planilha importada</h2>
           <p>Clique no botão <strong>"Subir Planilha B3 (.xlsx/.csv)"</strong> acima para importar suas movimentações e calcular o preço médio.</p>
         </div>
@@ -31,25 +32,25 @@ export class PortfolioView {
         <section class="kpi-grid">
           ${KpiCard.generateHtml({
             title: 'Patrimônio Total',
-            icon: '💰',
+            icon: Icons.wallet(18),
             value: `R$ ${summary.totalInvested.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             subtext: 'Custo total acumulado',
           })}
           ${KpiCard.generateHtml({
             title: 'Total de Ativos',
-            icon: '🏢',
+            icon: Icons.building(18),
             value: String(summary.totalAssets),
             subtext: 'Ativos em custódia',
           })}
           ${KpiCard.generateHtml({
             title: 'Operações',
-            icon: '🔄',
+            icon: Icons.refresh(18),
             value: String(summary.totalOperations),
             subtext: 'Salvas no banco de dados',
           })}
           ${KpiCard.generateHtml({
             title: 'Maior Posição',
-            icon: '⭐',
+            icon: Icons.star(18),
             value: topPosition ? topPosition.ticker : '-',
             subtext:
               topPosition && summary.totalInvested > 0

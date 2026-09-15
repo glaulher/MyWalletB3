@@ -5,6 +5,7 @@ import { PersistentOperationRepository } from '../../infrastructure/repositories
 import { PersistentAssetRepository } from '../../infrastructure/repositories/PersistentAssetRepository.ts';
 import { Button } from '../components/Button.ts';
 import { Banner } from '../components/Banner.ts';
+import { Icons } from '../components/Icons.ts';
 
 export class BackupView {
   private container: HTMLElement;
@@ -32,7 +33,7 @@ export class BackupView {
       <div class="view-content">
         <div class="view-header">
           <div>
-            <h2 class="view-title">💾 Backup e Restauração de Dados</h2>
+            <h2 class="view-title">${Icons.database(22)} Backup e Restauração de Dados</h2>
             <p class="view-subtitle">Exporte cópias de segurança, restaure backups anteriores ou reverta lotes importados.</p>
           </div>
         </div>
@@ -43,7 +44,7 @@ export class BackupView {
           <!-- Card Exportar -->
           <div class="card backup-card">
             <div class="backup-card-header">
-              <span class="backup-icon">📤</span>
+              <span class="backup-icon">${Icons.download(24)}</span>
               <div>
                 <h3 class="card-title">Exportar Banco de Dados</h3>
                 <p class="card-subtitle">Download de arquivo .json estruturado com ${operations.length} operações e ${batches.length} lotes.</p>
@@ -56,7 +57,7 @@ export class BackupView {
               ${Button.generateHtml({
                 id: 'btn-export-backup',
                 label: 'Baixar Backup Completo (.json)',
-                icon: '💾',
+                icon: Icons.download(16),
                 variant: 'primary',
                 className: 'btn-full-width',
                 disabled: operations.length === 0,
@@ -67,7 +68,7 @@ export class BackupView {
           <!-- Card Restaurar -->
           <div class="card backup-card">
             <div class="backup-card-header">
-              <span class="backup-icon">📥</span>
+              <span class="backup-icon">${Icons.upload(24)}</span>
               <div>
                 <h3 class="card-title">Restaurar de um Arquivo</h3>
                 <p class="card-subtitle">Suba um arquivo .json gerado previamente para recuperar seus dados.</p>
@@ -87,7 +88,7 @@ export class BackupView {
               ${Button.generateHtml({
                 id: 'btn-select-backup',
                 label: 'Selecionar Arquivo de Backup',
-                icon: '📂',
+                icon: Icons.folderOpen(16),
                 variant: 'secondary',
                 className: 'btn-full-width',
               })}
@@ -129,7 +130,8 @@ export class BackupView {
                       <td class="text-right">${b.operationCount}</td>
                       <td class="text-right">
                         <button class="btn btn-danger btn-small btn-remove-batch" data-batch-id="${b.id}" data-file-name="${b.fileName}">
-                          ↩ Desfazer Este Lote
+                          ${Icons.undo(14)}
+                          <span>Desfazer Este Lote</span>
                         </button>
                       </td>
                     </tr>
@@ -147,13 +149,16 @@ export class BackupView {
         <div class="card danger-zone-card" style="margin-top: 24px;">
           <div class="card-header-flex">
             <div>
-              <h3 class="card-title" style="color: #f87171;">⚠️ Zona de Perigo</h3>
+              <h3 class="card-title" style="color: #f87171; display: flex; align-items: center; gap: 8px;">
+                ${Icons.alertCircle(18)}
+                <span>Zona de Perigo</span>
+              </h3>
               <p class="card-subtitle">Apagar permanentemente todas as operações e redefinir o banco.</p>
             </div>
             ${Button.generateHtml({
               id: 'btn-danger-reset',
               label: 'Zerar Banco de Dados',
-              icon: '🗑️',
+              icon: Icons.trash(16),
               variant: 'danger',
             })}
           </div>

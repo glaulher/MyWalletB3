@@ -6,6 +6,7 @@ import { IOperationRepository } from '../../core/repositories/IOperationReposito
 import { PersistentOperationRepository } from '../../infrastructure/repositories/PersistentOperationRepository.ts';
 import { Badge } from '../components/Badge.ts';
 import { KpiCard } from '../components/KpiCard.ts';
+import { Icons } from '../components/Icons.ts';
 
 export class IncomeReportView {
   private container: HTMLElement;
@@ -41,7 +42,7 @@ export class IncomeReportView {
       <div class="view-content">
         <div class="view-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
           <div>
-            <h2 class="view-title">📑 Informe para IRPF (Bens e Direitos em 31/12)</h2>
+            <h2 class="view-title">${Icons.fileSpreadsheet(22)} Informe para IRPF (Bens e Direitos em 31/12)</h2>
             <p class="view-subtitle">Relatório formatado com códigos e textos oficiais para a Declaração de Ajuste Anual da Receita Federal.</p>
           </div>
           <div style="display: flex; align-items: center; gap: 8px;">
@@ -61,19 +62,19 @@ export class IncomeReportView {
         <div class="kpi-grid">
           ${KpiCard.generateHtml({
             title: `Patrimônio em 31/12/${this.selectedYear}`,
-            icon: '💰',
+            icon: Icons.wallet(18),
             value: `R$ ${totalCostCurrentYear.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             subtext: 'Custo total de aquisição',
           })}
           ${KpiCard.generateHtml({
             title: `Patrimônio em 31/12/${this.selectedYear - 1}`,
-            icon: '🏛️',
+            icon: Icons.landmark(18),
             value: `R$ ${totalCostPreviousYear.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             subtext: 'Ano anterior',
           })}
           ${KpiCard.generateHtml({
             title: 'Ativos a Declarar',
-            icon: '📄',
+            icon: Icons.fileText(18),
             value: String(items.length),
             subtext: 'Itens em Bens e Direitos',
           })}
@@ -84,9 +85,9 @@ export class IncomeReportView {
           <div class="card-header-flex">
             <div>
               <h3 class="card-title">Ficha de Bens e Direitos (Posição em 31/12/${this.selectedYear})</h3>
-              <p class="card-subtitle">Copie o texto de cada ativo diretamente para o programa do IRPF.</p>
+              <p class="card-subtitle">Utilize os dados e a discriminação abaixo para preencher o programa da Receita Federal.</p>
             </div>
-            <span class="badge badge-info">${items.length} itens declaráveis</span>
+            <span class="badge badge-info">${items.length} ativos em custódia</span>
           </div>
 
           ${
@@ -97,30 +98,33 @@ export class IncomeReportView {
               <table class="data-table">
                 <thead>
                   <tr>
-                    <th>Código RFB</th>
+                    <th>Grupo / Código</th>
                     <th>Ativo</th>
                     <th class="text-right">Quantidade</th>
                     <th class="text-right">Preço Médio</th>
                     <th class="text-right">Situação em 31/12/${this.selectedYear - 1}</th>
                     <th class="text-right">Situação em 31/12/${this.selectedYear}</th>
-                    <th>Discriminação (Texto para Declaração)</th>
+                    <th>Discriminação e Ações</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${items
                     .map((item, idx) => {
                       const badgeVariant =
-                        item.assetType === 'fii'
-                          ? 'fii'
-                          : item.assetType === 'bdr'
-                            ? 'bdr'
+                        item.assetType === 'stock'
+                          ? 'stock'
+                          : item.assetType === 'fii'
+                            ? 'fii'
                             : item.assetType === 'unit'
                               ? 'unit'
-                              : 'stock';
+                              : item.assetType === 'option'
+                                ? 'option'
+                                : 'bdr';
+
                       return `
                       <tr>
-                        <td class="font-mono" style="white-space: nowrap;">
-                          <strong>${item.groupCode}-${item.itemCode}</strong>
+                        <td>
+                          <div class="font-bold">${item.groupCode} - ${item.itemCode}</div>
                           <div style="font-size: 11px; color: var(--text-muted);">${item.groupName}</div>
                         </td>
                         <td>
@@ -134,7 +138,8 @@ export class IncomeReportView {
                         <td style="max-width: 320px;">
                           <div style="font-size: 12px; color: #cbd5e1; margin-bottom: 6px; line-height: 1.4;">${item.description}</div>
                           <button class="btn btn-secondary btn-small btn-copy-desc" data-index="${idx}">
-                            📋 Copiar Texto
+                            ${Icons.copy(14)}
+                            <span>Copiar Texto</span>
                           </button>
                         </td>
                       </tr>

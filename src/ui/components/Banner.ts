@@ -30,7 +30,7 @@ export class Banner {
     if (props.icon) {
       const iconSpan = document.createElement('span');
       iconSpan.className = 'banner-icon';
-      iconSpan.textContent = props.icon + ' ';
+      iconSpan.innerHTML = props.icon;
       el.appendChild(iconSpan);
     }
 

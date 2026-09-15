@@ -52,7 +52,7 @@ export class Button {
     if (props.icon) {
       const iconSpan = document.createElement('span');
       iconSpan.className = 'btn-icon';
-      iconSpan.textContent = props.icon;
+      iconSpan.innerHTML = props.icon;
       button.appendChild(iconSpan);
     }
 
