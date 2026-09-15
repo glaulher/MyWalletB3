@@ -18,8 +18,9 @@ export class TabBar {
     props.tabs.forEach((tab) => {
       const button = document.createElement('button');
       const isActive = tab.id === props.activeTabId;
-      button.className = `tab-button ${isActive ? 'tab-active' : ''}`;
+      button.className = `tab-button ${isActive ? 'tab-active selected' : ''}`;
       button.dataset.tabId = tab.id;
+      button.setAttribute('aria-selected', isActive ? 'true' : 'false');
 
       button.innerHTML = `
         <span class="tab-icon">${tab.icon}</span>
@@ -29,8 +30,14 @@ export class TabBar {
       button.addEventListener('click', () => {
         if (button.classList.contains('tab-active')) return;
 
-        nav.querySelectorAll('.tab-button').forEach((b) => b.classList.remove('tab-active'));
+        nav.querySelectorAll('.tab-button').forEach((b) => {
+          b.classList.remove('tab-active');
+          b.classList.remove('selected');
+          b.setAttribute('aria-selected', 'false');
+        });
         button.classList.add('tab-active');
+        button.classList.add('selected');
+        button.setAttribute('aria-selected', 'true');
         props.onTabChange(tab.id);
       });
 

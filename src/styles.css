@@ -125,6 +125,25 @@ body {
   background-color: rgba(239, 68, 68, 0.25);
 }
 
+/* Selected / Active buttons */
+.btn-selected,
+.btn.selected,
+.btn.active,
+.btn[aria-selected='true'] {
+  background-color: #22c55e;
+  color: #ffffff;
+  border-color: #22c55e;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.25);
+}
+
+.btn-selected:hover,
+.btn.selected:hover,
+.btn.active:hover,
+.btn[aria-selected='true']:hover {
+  background-color: #16a34a;
+  border-color: #16a34a;
+}
+
 .btn-large {
   padding: 14px 28px;
   font-size: 16px;
@@ -571,14 +590,65 @@ body {
   background-color: var(--bg-card);
 }
 
-.tab-button.tab-active {
-  color: #fff;
-  background-color: var(--primary);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+.tab-button.tab-active,
+.tab-button.selected,
+.tab-button[aria-selected='true'] {
+  color: #ffffff;
+  background-color: #22c55e;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.25);
+}
+
+.tab-button.tab-active:hover,
+.tab-button.selected:hover,
+.tab-button[aria-selected='true']:hover {
+  background-color: #16a34a;
 }
 
 .tab-icon {
   font-size: 16px;
+}
+
+/* Button Group / Filter Pills */
+.btn-group {
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--bg-card);
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  gap: 2px;
+}
+
+.btn-group .btn-filter {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-group .btn-filter:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.btn-group .btn-filter.selected,
+.btn-group .btn-filter.active,
+.btn-group .btn-filter[aria-selected='true'] {
+  background-color: #22c55e;
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.25);
+}
+
+.btn-group .btn-filter.selected:hover,
+.btn-group .btn-filter.active:hover,
+.btn-group .btn-filter[aria-selected='true']:hover {
+  background-color: #16a34a;
 }
 
 /* Button variants & sizes */

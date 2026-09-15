@@ -10,6 +10,7 @@ export interface ButtonProps {
   title?: string;
   className?: string;
   disabled?: boolean;
+  selected?: boolean;
   onClick?: (e: MouseEvent) => void;
 }
 
@@ -18,6 +19,8 @@ export class Button {
     const variantClass = `btn-${props.variant || 'primary'}`;
     const sizeClass =
       props.size === 'large' ? 'btn-large' : props.size === 'small' ? 'btn-small' : '';
+    const selectedClass = props.selected ? 'btn-selected' : '';
+    const selectedAttr = props.selected ? 'aria-selected="true"' : '';
     const idAttr = props.id ? `id="${props.id}"` : '';
     const titleAttr = props.title ? `title="${props.title}"` : '';
     const disabledAttr = props.disabled ? 'disabled' : '';
@@ -25,7 +28,7 @@ export class Button {
     const customClass = props.className || '';
 
     return `
-      <button ${idAttr} class="btn ${variantClass} ${sizeClass} ${customClass}" ${titleAttr} ${disabledAttr}>
+      <button ${idAttr} class="btn ${variantClass} ${sizeClass} ${selectedClass} ${customClass}" ${titleAttr} ${disabledAttr} ${selectedAttr}>
         ${iconSpan}
         <span>${props.label}</span>
       </button>
@@ -37,11 +40,14 @@ export class Button {
     const variantClass = `btn-${props.variant || 'primary'}`;
     const sizeClass =
       props.size === 'large' ? 'btn-large' : props.size === 'small' ? 'btn-small' : '';
+    const selectedClass = props.selected ? 'btn-selected' : '';
 
-    button.className = `btn ${variantClass} ${sizeClass} ${props.className || ''}`.trim();
+    button.className =
+      `btn ${variantClass} ${sizeClass} ${selectedClass} ${props.className || ''}`.trim();
     if (props.id) button.id = props.id;
     if (props.title) button.title = props.title;
     if (props.disabled) button.disabled = true;
+    if (props.selected) button.setAttribute('aria-selected', 'true');
 
     if (props.icon) {
       const iconSpan = document.createElement('span');

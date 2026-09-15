@@ -87,11 +87,11 @@ export class OperationsView {
             <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
               <input type="text" id="filter-ticker" placeholder="Filtrar Ticker (ex: CPTI11)..."
                      class="text-input" value="${this.filterTicker}" style="padding: 6px 12px; font-size: 13px;" />
-              <select id="filter-type" class="select-input" style="padding: 6px 12px; font-size: 13px;">
-                <option value="all" ${this.filterType === 'all' ? 'selected' : ''}>Todos os tipos</option>
-                <option value="buy" ${this.filterType === 'buy' ? 'selected' : ''}>Apenas Compras</option>
-                <option value="sell" ${this.filterType === 'sell' ? 'selected' : ''}>Apenas Vendas</option>
-              </select>
+              <div class="btn-group" id="filter-type-group">
+                <button type="button" class="btn-filter ${this.filterType === 'all' ? 'selected' : ''}" data-type="all">Todas</button>
+                <button type="button" class="btn-filter ${this.filterType === 'buy' ? 'selected' : ''}" data-type="buy">Compras</button>
+                <button type="button" class="btn-filter ${this.filterType === 'sell' ? 'selected' : ''}" data-type="sell">Vendas</button>
+              </div>
             </div>
           </div>
 
@@ -148,16 +148,23 @@ export class OperationsView {
 
   private bindEvents(): void {
     const inputTicker = this.container.querySelector('#filter-ticker') as HTMLInputElement;
-    const selectType = this.container.querySelector('#filter-type') as HTMLSelectElement;
+    const filterButtons = this.container.querySelectorAll<HTMLButtonElement>(
+      '#filter-type-group .btn-filter',
+    );
 
     inputTicker?.addEventListener('input', () => {
       this.filterTicker = inputTicker.value;
       this.render();
     });
 
-    selectType?.addEventListener('change', () => {
-      this.filterType = selectType.value;
-      this.render();
+    filterButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const type = btn.dataset.type;
+        if (type && type !== this.filterType) {
+          this.filterType = type;
+          this.render();
+        }
+      });
     });
   }
 }

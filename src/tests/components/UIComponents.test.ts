@@ -16,6 +16,14 @@ describe('UI Reusable Components', () => {
     expect(html).toContain('id="btn-test"');
     expect(html).toContain('💾');
     expect(html).toContain('Salvar');
+
+    const selectedHtml = Button.generateHtml({
+      label: 'Filtrar',
+      variant: 'secondary',
+      selected: true,
+    });
+    expect(selectedHtml).toContain('btn-selected');
+    expect(selectedHtml).toContain('aria-selected="true"');
   });
 
   it('Badge should generate valid badge classes for asset types and operations', () => {
