@@ -18,6 +18,10 @@ describe('UI Reusable Components', () => {
     const downloadSvg = Icons.download();
     expect(downloadSvg).toContain('<svg');
     expect(downloadSvg).toContain('stroke="currentColor"');
+
+    const chevronSvg = Icons.chevronDown(16);
+    expect(chevronSvg).toContain('<svg');
+    expect(chevronSvg).toContain('width="16"');
   });
 
   it('Button should generate valid HTML with variants and icons', () => {

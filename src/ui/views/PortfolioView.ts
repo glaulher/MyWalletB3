@@ -64,6 +64,8 @@ export class PortfolioView {
   private container: HTMLElement;
   private selectedCategory: PortfolioCategoryKey = 'all';
   private lastSummary: DashboardSummary | null = null;
+  // Set of category keys currently expanded (starts empty so all are collapsed by default)
+  private expandedCategories: Set<string> = new Set();
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -155,31 +157,43 @@ export class PortfolioView {
           </div>
         </section>
 
-        <!-- Seção Dividida por Categoria -->
+        <!-- Seção Dividida por Categoria (Colapsável) -->
         <section class="portfolio-divided-section">
           <div class="card-header-flex" style="margin-bottom: 8px;">
             <div>
               <h3 class="card-title" style="font-size: 18px;">Carteira por Categoria</h3>
-              <p class="card-subtitle">Posições separadas por FII, FII de Infra, Ações, Opções e BDR</p>
+              <p class="card-subtitle">Clique no cabeçalho de cada categoria para expandir ou recolher seus ativos</p>
             </div>
-            <!-- Filtro de Categoria -->
-            <div class="btn-group" id="portfolio-category-filter">
-              <button type="button" class="btn-filter ${this.selectedCategory === 'all' ? 'selected' : ''}" data-category="all">
-                Todas (${summary.positions.length})
-              </button>
-              ${categoryStats
-                .map(
-                  (cat) => `
-                <button type="button" class="btn-filter ${this.selectedCategory === cat.key ? 'selected' : ''}" data-category="${cat.key}">
-                  ${cat.icon} ${cat.badgeLabel} (${cat.count})
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <!-- Botões de Ação Rápida de Expansão -->
+              <div class="btn-group">
+                <button type="button" class="btn-filter" id="btn-expand-all" title="Expandir todas as categorias">
+                  Expandir Todas
                 </button>
-              `,
-                )
-                .join('')}
+                <button type="button" class="btn-filter" id="btn-collapse-all" title="Recolher todas as categorias">
+                  Recolher Todas
+                </button>
+              </div>
+
+              <!-- Filtro de Categoria -->
+              <div class="btn-group" id="portfolio-category-filter">
+                <button type="button" class="btn-filter ${this.selectedCategory === 'all' ? 'selected' : ''}" data-category="all">
+                  Todas (${summary.positions.length})
+                </button>
+                ${categoryStats
+                  .map(
+                    (cat) => `
+                  <button type="button" class="btn-filter ${this.selectedCategory === cat.key ? 'selected' : ''}" data-category="${cat.key}">
+                    ${cat.icon} ${cat.badgeLabel} (${cat.count})
+                  </button>
+                `,
+                  )
+                  .join('')}
+              </div>
             </div>
           </div>
 
-          <!-- Cards de Grupos de Categorias -->
+          <!-- Cards de Grupos de Categorias Colapsáveis -->
           <div id="category-groups-container">
             ${this.renderCategoryGroups(categoryStats, summary.totalInvested)}
           </div>
@@ -189,7 +203,7 @@ export class PortfolioView {
 
     // Render Charts
     this.renderCharts(summary, categoryStats);
-    this.bindEvents();
+    this.bindEvents(categoryStats);
   }
 
   private renderCategoryGroups(
@@ -214,9 +228,12 @@ export class PortfolioView {
 
     return visibleCategories
       .map((cat) => {
+        const isExpanded = this.expandedCategories.has(cat.key);
+
         return `
-        <div class="category-group-card card">
-          <div class="category-header-flex">
+        <div class="category-group-card card ${isExpanded ? 'is-expanded' : ''}" data-cat-id="${cat.key}">
+          <!-- Cabeçalho Clicável do Accordion -->
+          <div class="category-header-clickable" data-toggle-cat="${cat.key}" role="button" tabindex="0" aria-expanded="${isExpanded ? 'true' : 'false'}" title="Clique para ${isExpanded ? 'recolher' : 'expandir'} ${cat.label}">
             <div class="category-title-wrap">
               <div class="category-icon-box" style="color: ${cat.color};">
                 ${cat.icon}
@@ -226,75 +243,84 @@ export class PortfolioView {
                 <p class="category-meta">${cat.count} ativo(s) em custódia</p>
               </div>
             </div>
-            <div class="category-subtotal-wrap">
-              <span class="category-subtotal-value">R$ ${cat.totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              <span class="category-subtotal-pct">${cat.percentage.toFixed(1)}% da carteira</span>
+            <div class="category-header-right">
+              <div class="category-subtotal-wrap">
+                <span class="category-subtotal-value">R$ ${cat.totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span class="category-subtotal-pct">${cat.percentage.toFixed(1)}% da carteira</span>
+              </div>
+              <div class="category-chevron">
+                ${Icons.chevronDown(16)}
+              </div>
             </div>
           </div>
 
-          <div class="table-responsive">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Ticker</th>
-                  <th>Classe</th>
-                  <th class="text-right">Quantidade</th>
-                  <th class="text-right">Preço Médio</th>
-                  <th class="text-right">Custo Total</th>
-                  <th class="text-right">% na Classe</th>
-                  <th class="text-right">% na Carteira</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${cat.positions
-                  .map((pos) => {
-                    const pctCategory =
-                      cat.totalCost > 0 ? (pos.totalCost / cat.totalCost) * 100 : 0;
-                    const pctWallet = totalInvested > 0 ? (pos.totalCost / totalInvested) * 100 : 0;
+          <!-- Conteúdo da Tabela (Exibido quando aberto) -->
+          <div class="category-body">
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Ticker</th>
+                    <th>Classe</th>
+                    <th class="text-right">Quantidade</th>
+                    <th class="text-right">Preço Médio</th>
+                    <th class="text-right">Custo Total</th>
+                    <th class="text-right">% na Classe</th>
+                    <th class="text-right">% na Carteira</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${cat.positions
+                    .map((pos) => {
+                      const pctCategory =
+                        cat.totalCost > 0 ? (pos.totalCost / cat.totalCost) * 100 : 0;
+                      const pctWallet =
+                        totalInvested > 0 ? (pos.totalCost / totalInvested) * 100 : 0;
 
-                    let typeLabel = 'Ação';
-                    let badgeVariant: 'stock' | 'fii' | 'fi-infra' | 'bdr' | 'unit' | 'option' =
-                      'stock';
+                      let typeLabel = 'Ação';
+                      let badgeVariant: 'stock' | 'fii' | 'fi-infra' | 'bdr' | 'unit' | 'option' =
+                        'stock';
 
-                    if (pos.type === 'fi-infra') {
-                      typeLabel = 'FI-Infra';
-                      badgeVariant = 'fi-infra';
-                    } else if (pos.type === 'fii') {
-                      typeLabel = 'FII';
-                      badgeVariant = 'fii';
-                    } else if (pos.type === 'bdr') {
-                      typeLabel = 'BDR';
-                      badgeVariant = 'bdr';
-                    } else if (pos.type === 'unit') {
-                      typeLabel = 'Unit';
-                      badgeVariant = 'unit';
-                    } else if (pos.type === 'option') {
-                      typeLabel = 'Opção';
-                      badgeVariant = 'option';
-                    }
+                      if (pos.type === 'fi-infra') {
+                        typeLabel = 'FI-Infra';
+                        badgeVariant = 'fi-infra';
+                      } else if (pos.type === 'fii') {
+                        typeLabel = 'FII';
+                        badgeVariant = 'fii';
+                      } else if (pos.type === 'bdr') {
+                        typeLabel = 'BDR';
+                        badgeVariant = 'bdr';
+                      } else if (pos.type === 'unit') {
+                        typeLabel = 'Unit';
+                        badgeVariant = 'unit';
+                      } else if (pos.type === 'option') {
+                        typeLabel = 'Opção';
+                        badgeVariant = 'option';
+                      }
 
-                    return `
-                      <tr>
-                        <td class="font-bold font-mono">${pos.ticker}</td>
-                        <td>${Badge.generateHtml({ label: typeLabel, variant: badgeVariant })}</td>
-                        <td class="text-right font-mono">${pos.quantity.toLocaleString('pt-BR')}</td>
-                        <td class="text-right font-mono">R$ ${pos.averagePrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
-                        <td class="text-right font-mono font-bold">R$ ${pos.totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td class="text-right font-mono text-muted">${pctCategory.toFixed(1)}%</td>
-                        <td class="text-right">
-                          <div class="percent-bar-wrapper">
-                            <span class="percent-text">${pctWallet.toFixed(1)}%</span>
-                            <div class="percent-bar-bg">
-                              <div class="percent-bar-fill" style="width: ${Math.min(100, pctWallet)}%; background: ${cat.color};"></div>
+                      return `
+                        <tr>
+                          <td class="font-bold font-mono">${pos.ticker}</td>
+                          <td>${Badge.generateHtml({ label: typeLabel, variant: badgeVariant })}</td>
+                          <td class="text-right font-mono">${pos.quantity.toLocaleString('pt-BR')}</td>
+                          <td class="text-right font-mono">R$ ${pos.averagePrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
+                          <td class="text-right font-mono font-bold">R$ ${pos.totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          <td class="text-right font-mono text-muted">${pctCategory.toFixed(1)}%</td>
+                          <td class="text-right">
+                            <div class="percent-bar-wrapper">
+                              <span class="percent-text">${pctWallet.toFixed(1)}%</span>
+                              <div class="percent-bar-bg">
+                                <div class="percent-bar-fill" style="width: ${Math.min(100, pctWallet)}%; background: ${cat.color};"></div>
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                      </tr>
-                    `;
-                  })
-                  .join('')}
-              </tbody>
-            </table>
+                          </td>
+                        </tr>
+                      `;
+                    })
+                    .join('')}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       `;
@@ -352,7 +378,16 @@ export class PortfolioView {
     }
   }
 
-  private bindEvents(): void {
+  private bindEvents(
+    categoryStats: Array<
+      CategoryConfig & {
+        positions: ConsolidatedPosition[];
+        totalCost: number;
+        percentage: number;
+      }
+    >,
+  ): void {
+    // 1. Category Filter Pills
     const filterButtons = this.container.querySelectorAll<HTMLButtonElement>(
       '#portfolio-category-filter .btn-filter',
     );
@@ -362,8 +397,67 @@ export class PortfolioView {
         const catKey = btn.dataset.category as PortfolioCategoryKey;
         if (catKey && catKey !== this.selectedCategory && this.lastSummary) {
           this.selectedCategory = catKey;
+          // If a specific category was clicked, expand it automatically so user sees its items
+          if (catKey !== 'all') {
+            this.expandedCategories.add(catKey);
+          }
           this.render(this.lastSummary);
         }
+      });
+    });
+
+    // 2. Click-to-toggle accordion headers
+    const clickableHeaders = this.container.querySelectorAll<HTMLElement>(
+      '.category-header-clickable',
+    );
+
+    clickableHeaders.forEach((header) => {
+      const toggle = () => {
+        const catKey = header.dataset.toggleCat;
+        if (!catKey) return;
+
+        const card = header.closest('.category-group-card');
+        if (!card) return;
+
+        if (this.expandedCategories.has(catKey)) {
+          this.expandedCategories.delete(catKey);
+          card.classList.remove('is-expanded');
+          header.setAttribute('aria-expanded', 'false');
+          header.setAttribute('title', `Clique para expandir`);
+        } else {
+          this.expandedCategories.add(catKey);
+          card.classList.add('is-expanded');
+          header.setAttribute('aria-expanded', 'true');
+          header.setAttribute('title', `Clique para recolher`);
+        }
+      };
+
+      header.addEventListener('click', toggle);
+      header.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggle();
+        }
+      });
+    });
+
+    // 3. Expand All / Collapse All buttons
+    const btnExpandAll = this.container.querySelector<HTMLButtonElement>('#btn-expand-all');
+    const btnCollapseAll = this.container.querySelector<HTMLButtonElement>('#btn-collapse-all');
+
+    btnExpandAll?.addEventListener('click', () => {
+      categoryStats.forEach((cat) => this.expandedCategories.add(cat.key));
+      this.container.querySelectorAll('.category-group-card').forEach((card) => {
+        card.classList.add('is-expanded');
+        card.querySelector('.category-header-clickable')?.setAttribute('aria-expanded', 'true');
+      });
+    });
+
+    btnCollapseAll?.addEventListener('click', () => {
+      this.expandedCategories.clear();
+      this.container.querySelectorAll('.category-group-card').forEach((card) => {
+        card.classList.remove('is-expanded');
+        card.querySelector('.category-header-clickable')?.setAttribute('aria-expanded', 'false');
       });
     });
   }

@@ -33,7 +33,9 @@ export type IconName =
   | 'barChart'
   | 'landmark'
   | 'alertCircle'
-  | 'info';
+  | 'info'
+  | 'chevronDown'
+  | 'chevronRight';
 
 export class Icons {
   /**
@@ -274,5 +276,13 @@ export class Icons {
       size,
       className,
     );
+  }
+
+  static chevronDown(size: number = 18, className: string = ''): string {
+    return this.wrap(`<polyline points="6 9 12 15 18 9"/>`, size, className);
+  }
+
+  static chevronRight(size: number = 18, className: string = ''): string {
+    return this.wrap(`<polyline points="9 18 15 12 9 6"/>`, size, className);
   }
 }
