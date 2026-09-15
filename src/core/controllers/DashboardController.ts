@@ -112,10 +112,12 @@ export class DashboardController {
     }
 
     const typeLabels: Record<string, string> = {
-      stock: 'Ações',
       fii: 'Fundos Imobiliários',
-      bdr: 'BDRs',
+      'fi-infra': 'FII de Infra',
+      stock: 'Ações',
       unit: 'Units',
+      bdr: 'BDRs',
+      option: 'Opções',
     };
 
     const allocationByType = Object.entries(typeTotals).map(([type, cost]) => ({

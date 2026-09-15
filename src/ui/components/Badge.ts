@@ -1,6 +1,7 @@
 export type BadgeVariant =
   | 'stock'
   | 'fii'
+  | 'fi-infra'
   | 'bdr'
   | 'unit'
   | 'option'
@@ -38,6 +39,8 @@ export class Badge {
         return 'badge-type-stock';
       case 'fii':
         return 'badge-type-fii';
+      case 'fi-infra':
+        return 'badge-type-fi-infra';
       case 'bdr':
         return 'badge-type-bdr';
       case 'unit':

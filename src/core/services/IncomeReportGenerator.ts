@@ -111,6 +111,12 @@ export class IncomeReportGenerator {
           itemCode: '03',
           groupName: '07 - Fundos (Fundos Imobiliários - FII)',
         };
+      case 'fi-infra':
+        return {
+          groupCode: '07',
+          itemCode: '01',
+          groupName: '07 - Fundos (FI-Infra - Fundos Incentivados de Infraestrutura)',
+        };
       case 'bdr':
         return {
           groupCode: '04',

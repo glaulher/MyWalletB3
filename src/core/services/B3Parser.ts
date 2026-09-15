@@ -367,6 +367,54 @@ export class B3Parser {
       return 'unit';
     }
 
+    // Known FI-Infra tickers (Fundos Incentivados de Investimento em Infraestrutura)
+    const fiInfraTickers = new Set([
+      'BDIF11',
+      'CPTI11',
+      'KDIF11',
+      'JURO11',
+      'BODB11',
+      'XPID11',
+      'IFRA11',
+      'OGIN11',
+      'CDII11',
+      'SNID11',
+      'EXES11',
+      'INFR11',
+      'IRIM11',
+      'BIDB11',
+      'GURG11',
+      'RBIF11',
+      'PLRI11',
+      'VGIJ11',
+      'VGIF11',
+      'XPIC11',
+      'PICE11',
+      'EQIN11',
+      'DIVI11',
+      'BIDI11',
+      'PRIF11',
+      'RZIF11',
+      'ICRI11',
+      'QUAS11',
+      'RBRX11',
+      'SULI11',
+      'TGIF11',
+      'ZAVI11',
+      'BINC11',
+      'IDFI11',
+      'LIFE11',
+      'NERI11',
+      'NDIV11',
+      'VIFI11',
+      'BBIF11',
+      'FPAB11',
+      'MANA11',
+    ]);
+    if (fiInfraTickers.has(normalized) || (market && market.toLowerCase().includes('infra'))) {
+      return 'fi-infra';
+    }
+
     // FIIs generally end in 11
     if (/11$/.test(normalized)) {
       return 'fii';

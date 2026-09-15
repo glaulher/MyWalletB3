@@ -54,7 +54,8 @@ describe('B3Parser', () => {
     expect(parser.detectAssetType('PETR4')).toBe('stock');
     expect(parser.detectAssetType('VALE3')).toBe('stock');
     expect(parser.detectAssetType('HGLG11')).toBe('fii');
-    expect(parser.detectAssetType('CPTI11')).toBe('fii');
+    expect(parser.detectAssetType('CPTI11')).toBe('fi-infra');
+    expect(parser.detectAssetType('BDIF11')).toBe('fi-infra');
     expect(parser.detectAssetType('BERK34')).toBe('bdr');
     expect(parser.detectAssetType('AAPL34')).toBe('bdr');
     expect(parser.detectAssetType('TAEE11')).toBe('unit');

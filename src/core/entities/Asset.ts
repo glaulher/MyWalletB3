@@ -1,4 +1,4 @@
-export type AssetType = 'stock' | 'fii' | 'bdr' | 'unit' | 'option';
+export type AssetType = 'stock' | 'fii' | 'fi-infra' | 'bdr' | 'unit' | 'option';
 
 export class Asset {
   constructor(

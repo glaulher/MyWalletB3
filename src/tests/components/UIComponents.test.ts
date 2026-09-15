@@ -49,6 +49,9 @@ describe('UI Reusable Components', () => {
     const fiiHtml = Badge.generateHtml({ label: 'FII', variant: 'fii' });
     expect(fiiHtml).toContain('badge-type-fii');
 
+    const fiInfraHtml = Badge.generateHtml({ label: 'FI-Infra', variant: 'fi-infra' });
+    expect(fiInfraHtml).toContain('badge-type-fi-infra');
+
     const buyHtml = Badge.generateHtml({ label: 'Compra', variant: 'buy' });
     expect(buyHtml).toContain('badge-buy');
 

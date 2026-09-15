@@ -7,6 +7,7 @@ import { Button } from '../components/Button.ts';
 import { Banner } from '../components/Banner.ts';
 import { Icons } from '../components/Icons.ts';
 import { PortfolioView } from './PortfolioView.ts';
+import { TradesView } from './TradesView.ts';
 import { OperationsView } from './OperationsView.ts';
 import { DarfView } from './DarfView.ts';
 import { IncomeReportView } from './IncomeReportView.ts';
@@ -21,6 +22,7 @@ export class DashboardView {
 
   private tabs: TabItem[] = [
     { id: 'wallet', label: 'Carteira', icon: Icons.wallet(16) },
+    { id: 'trades', label: 'Compras e Vendas', icon: Icons.refresh(16) },
     { id: 'operations', label: 'Extrato', icon: Icons.fileText(16) },
     { id: 'darf', label: 'Calculadora DARF', icon: Icons.calculator(16) },
     { id: 'irpf', label: 'Informe IRPF', icon: Icons.fileSpreadsheet(16) },
@@ -125,6 +127,11 @@ export class DashboardView {
       case 'wallet': {
         const portfolioView = new PortfolioView(contentArea);
         portfolioView.render(summary);
+        break;
+      }
+      case 'trades': {
+        const tradesView = new TradesView(contentArea);
+        await tradesView.render();
         break;
       }
       case 'operations': {
