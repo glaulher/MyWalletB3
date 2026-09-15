@@ -50,7 +50,7 @@ export class BackupView {
               </div>
             </div>
             <div class="backup-card-body">
-              <p class="text-muted" style="margin-bottom: 16px; font-size: 13px;">
+              <p class="text-muted" style="margin-bottom: 24px; font-size: 13px; line-height: 1.5;">
                 Gere um arquivo de segurança contendo todas as operações cadastradas, preços médios e histórico de importações.
               </p>
               ${Button.generateHtml({
@@ -58,6 +58,7 @@ export class BackupView {
                 label: 'Baixar Backup Completo (.json)',
                 icon: '💾',
                 variant: 'primary',
+                className: 'btn-full-width',
                 disabled: operations.length === 0,
               })}
             </div>
@@ -74,11 +75,13 @@ export class BackupView {
             </div>
             <div class="backup-card-body">
               <input type="file" id="backup-file-input" accept=".json" class="hidden-input" />
-              <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px;">
-                <label style="font-size: 13px; color: var(--text-muted);">Modo:</label>
-                <select id="restore-mode" class="select-input">
-                  <option value="overwrite">Substituir dados atuais</option>
-                  <option value="merge">Mesclar com dados atuais</option>
+              <div style="margin-bottom: 16px;">
+                <label for="restore-mode" style="display: block; font-size: 13px; font-weight: 500; color: var(--text-muted); margin-bottom: 8px;">
+                  Modo de Restauração:
+                </label>
+                <select id="restore-mode" class="select-input" style="width: 100%;">
+                  <option value="overwrite">Substituir dados atuais (Limpa banco e importa)</option>
+                  <option value="merge">Mesclar com dados atuais (Preserva existentes)</option>
                 </select>
               </div>
               ${Button.generateHtml({
@@ -86,6 +89,7 @@ export class BackupView {
                 label: 'Selecionar Arquivo de Backup',
                 icon: '📂',
                 variant: 'secondary',
+                className: 'btn-full-width',
               })}
             </div>
           </div>
