@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import { B3PositionParser } from '../../core/services/B3PositionParser.ts';
 import { ReconciliationService } from '../../core/services/ReconciliationService.ts';
 import { ConsolidatedPosition } from '../../core/entities/ConsolidatedPosition.ts';
+import { Operation } from '../../core/entities/Operation.ts';
 
 describe('B3PositionParser & ReconciliationService', () => {
   const parser = new B3PositionParser();
@@ -108,5 +109,108 @@ describe('B3PositionParser & ReconciliationService', () => {
 
     expect(berk).toBeDefined();
     expect(berk?.type).toBe('MATCH');
+  });
+
+  it('should decode B3 option ticker 5th character to month and call/put type', () => {
+    // Calls A-L
+    expect(service.getOptionExpirationMonth('PETRA300')).toEqual({
+      monthIndex: 0,
+      optionType: 'CALL',
+    });
+    expect(service.getOptionExpirationMonth('PETRL380')).toEqual({
+      monthIndex: 11,
+      optionType: 'CALL',
+    });
+
+    // Puts M-X
+    expect(service.getOptionExpirationMonth('VALEM650')).toEqual({
+      monthIndex: 0,
+      optionType: 'PUT',
+    });
+    expect(service.getOptionExpirationMonth('BOVAP110')).toEqual({
+      monthIndex: 3,
+      optionType: 'PUT',
+    });
+    expect(service.getOptionExpirationMonth('PETRX200')).toEqual({
+      monthIndex: 11,
+      optionType: 'PUT',
+    });
+
+    // Non options
+    expect(service.getOptionExpirationMonth('PETR4')).toBeNull();
+    expect(service.getOptionExpirationMonth('WEGE3')).toBeNull();
+  });
+
+  it('should calculate the 3rd Friday of any month correctly (official B3 expiration)', () => {
+    // Dec 2024: 3rd Friday is Dec 20
+    const dec2024 = service.getThirdFriday(2024, 11);
+    expect(dec2024.getDate()).toBe(20);
+    expect(dec2024.getDay()).toBe(5);
+
+    // Apr 2024: 3rd Friday is Apr 19
+    const apr2024 = service.getThirdFriday(2024, 3);
+    expect(apr2024.getDate()).toBe(19);
+    expect(apr2024.getDay()).toBe(5);
+
+    // Jan 2024: 3rd Friday is Jan 19
+    const jan2024 = service.getThirdFriday(2024, 0);
+    expect(jan2024.getDate()).toBe(19);
+    expect(jan2024.getDay()).toBe(5);
+
+    // Feb 2024: 3rd Friday is Feb 16
+    const feb2024 = service.getThirdFriday(2024, 1);
+    expect(feb2024.getDate()).toBe(16);
+    expect(feb2024.getDay()).toBe(5);
+  });
+
+  it('should calculate exact expiration date from purchase date and option ticker', () => {
+    // Bought PETRL380 (Dec Call) in March 2024 -> expires Dec 20, 2024
+    const exp1 = service.calculateOptionExpirationDate('PETRL380', new Date('2024-03-10T12:00:00'));
+    expect(exp1.getFullYear()).toBe(2024);
+    expect(exp1.getMonth()).toBe(11);
+    expect(exp1.getDate()).toBe(20);
+
+    // Bought PETRB250 (Feb Call) in November 2023 -> expires Feb 16, 2024 (next year cycle)
+    const exp2 = service.calculateOptionExpirationDate('PETRB250', new Date('2023-11-10T12:00:00'));
+    expect(exp2.getFullYear()).toBe(2024);
+    expect(exp2.getMonth()).toBe(1);
+    expect(exp2.getDate()).toBe(16);
+
+    // Bought VALEM650 (Jan Put) in January 2024 before 3rd Friday -> expires Jan 19, 2024
+    const exp3 = service.calculateOptionExpirationDate('VALEM650', new Date('2024-01-05T12:00:00'));
+    expect(exp3.getFullYear()).toBe(2024);
+    expect(exp3.getMonth()).toBe(0);
+    expect(exp3.getDate()).toBe(19);
+  });
+
+  it('should populate purchaseDate and expirationDate in reconcile when operations are passed', () => {
+    const calcPositions = [new ConsolidatedPosition('PETRL380', 500, 0.45, 225, 'option')];
+    const b3Items = [
+      {
+        ticker: 'VALE3',
+        productName: 'VALE',
+        assetType: 'stock' as const,
+        quantity: 100,
+        closePrice: 60,
+        updatedValue: 6000,
+        institutions: ['XP'],
+      },
+    ];
+    const operations = [
+      new Operation('op1', new Date('2024-04-10T12:00:00'), 'PETRL380', 'buy', 500, 0.45),
+    ];
+
+    const results = service.reconcile(calcPositions, b3Items, operations);
+    const item = results.find((r) => r.ticker === 'PETRL380');
+
+    expect(item).toBeDefined();
+    expect(item?.type).toBe('OPTION_WORTHLESS');
+    expect(item?.purchaseDate).toBeDefined();
+    expect(item?.purchaseDate?.getMonth()).toBe(3); // April
+    expect(item?.expirationDate).toBeDefined();
+    expect(item?.expirationDate?.getMonth()).toBe(11); // December (L)
+    expect(item?.expirationDate?.getDate()).toBe(20); // 3rd Friday
+    expect(item?.description).toContain('Comprada em');
+    expect(item?.description).toContain('Vencimento B3 detectado: 20/12/2024');
   });
 });

@@ -25,6 +25,8 @@ export interface ReconciliationItem {
   description: string;
   suggestedActionLabel: string;
   ratio?: number;
+  purchaseDate?: Date;
+  expirationDate?: Date;
 }
 
 export class ReconciliationService {
@@ -34,6 +36,7 @@ export class ReconciliationService {
   reconcile(
     calculatedPositions: ConsolidatedPosition[],
     b3Items: B3PositionItem[],
+    operations?: Operation[],
   ): ReconciliationItem[] {
     const calcMap = new Map<string, ConsolidatedPosition>();
     calculatedPositions.forEach((p) => calcMap.set(p.ticker.toUpperCase().trim(), p));
@@ -76,6 +79,27 @@ export class ReconciliationService {
 
       // 2. Option expired / worthless
       if (assetType === 'option' && calculatedQty > 0 && b3Qty === 0) {
+        let purchaseDate: Date | undefined;
+        let expirationDate: Date | undefined;
+        let description = 'Opção expirou sem exercício (virou pó). Posição encerrada na B3.';
+
+        if (operations && operations.length > 0) {
+          const buyOps = operations
+            .filter((o) => o.asset.toUpperCase().trim() === ticker && o.type === 'buy')
+            .sort((a, b) => a.date.getTime() - b.date.getTime());
+          if (buyOps.length > 0) {
+            purchaseDate = buyOps[0].date;
+            expirationDate = this.calculateOptionExpirationDate(ticker, purchaseDate);
+            const buyDay = String(purchaseDate.getDate()).padStart(2, '0');
+            const buyMonth = String(purchaseDate.getMonth() + 1).padStart(2, '0');
+            const buyYear = purchaseDate.getFullYear();
+            const expDay = String(expirationDate.getDate()).padStart(2, '0');
+            const expMonth = String(expirationDate.getMonth() + 1).padStart(2, '0');
+            const expYear = expirationDate.getFullYear();
+            description = `Comprada em ${buyDay}/${buyMonth}/${buyYear}. Vencimento B3 detectado: ${expDay}/${expMonth}/${expYear} (3ª sexta-feira). Opção virou pó.`;
+          }
+        }
+
         results.push({
           ticker,
           assetType,
@@ -86,8 +110,10 @@ export class ReconciliationService {
           closePrice,
           calculatedAvgPrice,
           type: 'OPTION_WORTHLESS',
-          description: 'Opção expirou sem exercício (virou pó). Posição encerrada na B3.',
+          description,
           suggestedActionLabel: 'Baixar por Expiração (Virou Pó) a R$ 0,00',
+          purchaseDate,
+          expirationDate,
         });
         continue;
       }
@@ -259,5 +285,76 @@ export class ReconciliationService {
       0,
       institution,
     );
+  }
+
+  /**
+   * Decodes B3 option ticker 5th character to determine expiration month (0-11) and type (CALL/PUT).
+   * Calls: A-L (Jan-Dec)
+   * Puts: M-X (Jan-Dec)
+   */
+  getOptionExpirationMonth(
+    ticker: string,
+  ): { monthIndex: number; optionType: 'CALL' | 'PUT' } | null {
+    const clean = ticker.toUpperCase().trim();
+    if (clean.length >= 5) {
+      const monthChar = clean[4];
+      const callIdx = 'ABCDEFGHIJKL'.indexOf(monthChar);
+      if (callIdx !== -1) {
+        return { monthIndex: callIdx, optionType: 'CALL' };
+      }
+      const putIdx = 'MNOPQRSTUVWX'.indexOf(monthChar);
+      if (putIdx !== -1) {
+        return { monthIndex: putIdx, optionType: 'PUT' };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Calculates the 3rd Friday of a given year and month (official B3 expiration rule since May/2021).
+   */
+  getThirdFriday(year: number, monthIndex: number): Date {
+    let fridaysCount = 0;
+    for (let day = 1; day <= 31; day++) {
+      const d = new Date(year, monthIndex, day);
+      if (d.getMonth() !== monthIndex) break;
+      if (d.getDay() === 5) {
+        fridaysCount++;
+        if (fridaysCount === 3) {
+          return d;
+        }
+      }
+    }
+    return new Date(year, monthIndex, 15);
+  }
+
+  /**
+   * Calculates the exact B3 option expiration date based on ticker code and purchase date.
+   */
+  calculateOptionExpirationDate(ticker: string, purchaseDate: Date): Date {
+    const info = this.getOptionExpirationMonth(ticker);
+    if (!info) {
+      const fallback = new Date(purchaseDate);
+      fallback.setDate(fallback.getDate() + 30);
+      return fallback;
+    }
+
+    const { monthIndex } = info;
+    let year = purchaseDate.getFullYear();
+
+    // If expiration month is before purchase month in calendar, it belongs to next year
+    if (monthIndex < purchaseDate.getMonth()) {
+      year += 1;
+    }
+
+    let expiration = this.getThirdFriday(year, monthIndex);
+
+    // If 3rd Friday of this month is before purchase date (e.g. bought later in the month), it's next year's cycle
+    if (expiration.getTime() < purchaseDate.getTime()) {
+      year += 1;
+      expiration = this.getThirdFriday(year, monthIndex);
+    }
+
+    return expiration;
   }
 }

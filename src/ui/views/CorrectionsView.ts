@@ -42,10 +42,49 @@ export class CorrectionsView {
     const positions = this.calculator.calculate(rawOps);
 
     if (this.b3Items) {
-      this.reconciliationResults = this.reconciliationService.reconcile(positions, this.b3Items);
+      this.reconciliationResults = this.reconciliationService.reconcile(
+        positions,
+        this.b3Items,
+        rawOps,
+      );
     }
 
     const openOptions = positions.filter((p) => p.type === 'option' && p.quantity > 0);
+    const optionPurchaseMap = new Map<
+      string,
+      {
+        purchaseDate: Date;
+        expirationDate: Date;
+        formattedBuy: string;
+        formattedExp: string;
+        formattedInputExp: string;
+      }
+    >();
+
+    for (const opt of openOptions) {
+      const buyOps = rawOps
+        .filter((o) => o.asset.toUpperCase().trim() === opt.ticker && o.type === 'buy')
+        .sort((a, b) => a.date.getTime() - b.date.getTime());
+      const pDate = buyOps.length > 0 ? buyOps[0].date : new Date();
+      const eDate = this.reconciliationService.calculateOptionExpirationDate(opt.ticker, pDate);
+
+      const pDay = String(pDate.getDate()).padStart(2, '0');
+      const pMonth = String(pDate.getMonth() + 1).padStart(2, '0');
+      const pYear = pDate.getFullYear();
+
+      const eDay = String(eDate.getDate()).padStart(2, '0');
+      const eMonth = String(eDate.getMonth() + 1).padStart(2, '0');
+      const eYear = eDate.getFullYear();
+
+      optionPurchaseMap.set(opt.ticker, {
+        purchaseDate: pDate,
+        expirationDate: eDate,
+        formattedBuy: `${pDay}/${pMonth}/${pYear}`,
+        formattedExp: `${eDay}/${eMonth}/${eYear}`,
+        formattedInputExp: `${eYear}-${eMonth}-${eDay}`,
+      });
+    }
+
     const allTickersInWallet = positions.map((p) => p.ticker);
 
     const diffsCount = this.reconciliationResults
@@ -296,7 +335,7 @@ export class CorrectionsView {
               ${Icons.target(18, 'text-danger')} Baixar Opção por Expiração (Virou Pó)
             </h4>
             <p class="card-subtitle" style="margin-bottom: 16px;">
-              Gera automaticamente uma venda a <strong>R$ 0,00</strong> na data do vencimento. Isso zera a quantidade em custódia e reconhece o prejuízo de 100% do prêmio para fins contábeis e fiscais (DARF).
+              Gera automaticamente uma venda a <strong>R$ 0,00</strong> na data do vencimento. A data de compra é identificada no seu histórico e a data de vencimento oficial da B3 (3ª sexta-feira do mês) é calculada e preenchida automaticamente.
             </p>
             <div class="correction-form-grid">
               <div class="form-group">
@@ -306,17 +345,22 @@ export class CorrectionsView {
                     openOptions.length === 0
                       ? `<option value="">Nenhuma opção com saldo positivo em carteira</option>`
                       : openOptions
-                          .map(
-                            (o) =>
-                              `<option value="${o.ticker}">${o.ticker} (${o.quantity} opções em custódia - PM R$ ${o.averagePrice.toFixed(2)})</option>`,
-                          )
+                          .map((o) => {
+                            const details = optionPurchaseMap.get(o.ticker);
+                            const extra = details
+                              ? ` (Comprada em ${details.formattedBuy} • Vencimento: ${details.formattedExp})`
+                              : '';
+                            return `<option value="${o.ticker}" data-exp="${details?.formattedInputExp || ''}" data-buy="${details?.formattedBuy || ''}" data-exp-fmt="${details?.formattedExp || ''}">
+                              ${o.ticker} — ${o.quantity} un (PM R$ ${o.averagePrice.toFixed(2)})${extra}
+                            </option>`;
+                          })
                           .join('')
                   }
                 </select>
               </div>
               <div class="form-group">
-                <label class="form-label">Data de Expiração</label>
-                <input type="date" id="worthless-date" class="text-input" value="${new Date().toISOString().split('T')[0]}" />
+                <label class="form-label">Data de Expiração (Vencimento B3)</label>
+                <input type="date" id="worthless-date" class="text-input" value="${openOptions.length > 0 && optionPurchaseMap.get(openOptions[0].ticker)?.formattedInputExp ? optionPurchaseMap.get(openOptions[0].ticker)!.formattedInputExp : new Date().toISOString().split('T')[0]}" />
               </div>
               <div>
                 ${Button.generateHtml({
@@ -327,6 +371,7 @@ export class CorrectionsView {
                 })}
               </div>
             </div>
+            <div id="worthless-auto-info" style="margin-top: 12px;"></div>
           </div>
 
           <!-- 2. Desdobramento (Split) -->
@@ -551,6 +596,40 @@ export class CorrectionsView {
     });
 
     // Manual Tool 1: Opção Virou Pó
+    const worthlessSelect = this.container.querySelector<HTMLSelectElement>(
+      '#worthless-option-select',
+    );
+    const worthlessDateInput = this.container.querySelector<HTMLInputElement>('#worthless-date');
+    const worthlessAutoInfo = this.container.querySelector<HTMLElement>('#worthless-auto-info');
+
+    const updateWorthlessInfo = () => {
+      const selectedOpt = worthlessSelect?.selectedOptions[0];
+      if (!selectedOpt || !selectedOpt.value) {
+        if (worthlessAutoInfo) worthlessAutoInfo.innerHTML = '';
+        return;
+      }
+      const expInput = selectedOpt.dataset.exp;
+      const buyFmt = selectedOpt.dataset.buy;
+      const expFmt = selectedOpt.dataset.expFmt;
+
+      if (expInput && worthlessDateInput) {
+        worthlessDateInput.value = expInput;
+      }
+
+      if (worthlessAutoInfo && buyFmt && expFmt) {
+        worthlessAutoInfo.innerHTML = `
+          <div style="background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 6px; padding: 8px 14px; display: inline-flex; align-items: center; gap: 12px; color: #4ade80; font-size: 13px;">
+            <span style="display: inline-flex; align-items: center; gap: 6px;">${Icons.calendar(14)} Comprada em: <strong>${buyFmt}</strong></span>
+            <span>•</span>
+            <span style="display: inline-flex; align-items: center; gap: 6px;">${Icons.target(14)} Vencimento B3 detectado: <strong>${expFmt}</strong> (3ª sexta-feira)</span>
+          </div>
+        `;
+      }
+    };
+
+    worthlessSelect?.addEventListener('change', updateWorthlessInfo);
+    updateWorthlessInfo();
+
     const btnSubmitWorthless =
       this.container.querySelector<HTMLButtonElement>('#btn-submit-worthless');
     btnSubmitWorthless?.addEventListener('click', async () => {
@@ -569,7 +648,7 @@ export class CorrectionsView {
         return;
       }
 
-      const date = dateInput.value ? new Date(dateInput.value) : new Date();
+      const date = dateInput.value ? new Date(dateInput.value + 'T12:00:00') : new Date();
       const op = this.reconciliationService.createWorthlessOptionOperation(
         ticker,
         pos.quantity,
@@ -578,7 +657,7 @@ export class CorrectionsView {
       await this.operationRepo.add(op);
 
       this.statusMessage = {
-        text: `Opção ${ticker} baixada com sucesso (prejuízo de 100% reconhecido a R$ 0,00).`,
+        text: `Opção ${ticker} baixada com sucesso na data de vencimento ${date.toLocaleDateString('pt-BR')} (prejuízo de 100% reconhecido a R$ 0,00).`,
         type: 'success',
       };
       if (this.onDataChanged) await this.onDataChanged();
@@ -708,6 +787,7 @@ export class CorrectionsView {
       const op = this.reconciliationService.createWorthlessOptionOperation(
         item.ticker,
         item.calculatedQty,
+        item.expirationDate || new Date(),
       );
       await this.operationRepo.add(op);
     } else if (item.type === 'SPLIT_SUSPECTED' && item.ratio) {
