@@ -135,13 +135,13 @@ export class CorrectionsView {
             <div class="card-header-flex" style="margin-top: 16px;">
               <div class="btn-group" id="recon-filter-group">
                 <button type="button" class="btn-filter ${this.filterStatus === 'diffs' ? 'selected' : ''}" data-status="diffs">
-                  Apenas Divergências (${diffsCount})
+                  ${Icons.alertCircle(14, 'text-warning')} Apenas Divergências (${diffsCount})
                 </button>
                 <button type="button" class="btn-filter ${this.filterStatus === 'all' ? 'selected' : ''}" data-status="all">
-                  Todos os Ativos (${this.reconciliationResults.length})
+                  ${Icons.database(14)} Todos os Ativos (${this.reconciliationResults.length})
                 </button>
                 <button type="button" class="btn-filter ${this.filterStatus === 'matched' ? 'selected' : ''}" data-status="matched">
-                  Conciliados (${matchCount})
+                  ${Icons.shieldCheck(14, 'text-success')} Conciliados (${matchCount})
                 </button>
               </div>
 
@@ -179,25 +179,32 @@ export class CorrectionsView {
                       : filteredRecon
                           .map((r) => {
                             let badgeClass = 'badge-status-match';
+                            let badgeIcon = Icons.shieldCheck(12);
                             let badgeLabel = 'Conciliado';
 
                             if (r.type === 'OPTION_WORTHLESS') {
                               badgeClass = 'badge-status-powder';
+                              badgeIcon = Icons.target(12);
                               badgeLabel = 'Virou Pó (Expirada)';
                             } else if (r.type === 'SPLIT_SUSPECTED') {
                               badgeClass = 'badge-status-split';
+                              badgeIcon = Icons.zap(12);
                               badgeLabel = `Desdobramento (1:${r.ratio})`;
                             } else if (r.type === 'REVERSE_SPLIT_SUSPECTED') {
                               badgeClass = 'badge-status-reverse';
+                              badgeIcon = Icons.gitMerge(12);
                               badgeLabel = `Grupamento (${r.ratio}:1)`;
                             } else if (r.type === 'MISSING_IN_APP') {
                               badgeClass = 'badge-status-deficit';
+                              badgeIcon = Icons.alertCircle(12);
                               badgeLabel = 'Falta no App';
                             } else if (r.type === 'DEFICIT_IN_APP') {
                               badgeClass = 'badge-status-deficit';
+                              badgeIcon = Icons.alertCircle(12);
                               badgeLabel = `Faltam +${r.diffQty}`;
                             } else if (r.type === 'EXCESS_IN_APP') {
                               badgeClass = 'badge-status-excess';
+                              badgeIcon = Icons.alertCircle(12);
                               badgeLabel = `Excesso de ${Math.abs(r.diffQty)}`;
                             }
 
@@ -226,15 +233,24 @@ export class CorrectionsView {
                               <td class="text-right font-mono font-bold">${r.b3Qty.toLocaleString('pt-BR')}</td>
                               <td class="text-right font-mono font-bold" style="${diffColor}">${diffText}</td>
                               <td>
-                                <span class="badge ${badgeClass}">${badgeLabel}</span>
+                                <span class="badge ${badgeClass}" style="display: inline-flex; align-items: center; gap: 4px;">
+                                  ${badgeIcon}
+                                  <span>${badgeLabel}</span>
+                                </span>
                                 <div class="text-muted" style="font-size: 11px; margin-top: 4px;">${r.description}</div>
                               </td>
                               <td class="text-right">
                                 ${
                                   r.type === 'MATCH'
-                                    ? `<span class="text-muted" style="font-size: 12px;">OK</span>`
-                                    : `<button type="button" class="btn btn-small btn-secondary btn-apply-single-recon" data-ticker="${r.ticker}">
-                                        ${r.type === 'OPTION_WORTHLESS' ? 'Baixar a R$ 0' : r.type === 'SPLIT_SUSPECTED' ? 'Aplicar Split' : 'Ajustar para B3'}
+                                    ? `<span class="text-muted" style="font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">${Icons.shieldCheck(14, 'text-success')} OK</span>`
+                                    : `<button type="button" class="btn btn-small btn-secondary btn-apply-single-recon" data-ticker="${r.ticker}" style="display: inline-flex; align-items: center; gap: 4px;">
+                                        ${
+                                          r.type === 'OPTION_WORTHLESS'
+                                            ? `${Icons.trash(13)} Baixar a R$ 0`
+                                            : r.type === 'SPLIT_SUSPECTED'
+                                              ? `${Icons.zap(13)} Aplicar Split`
+                                              : `${Icons.check(13)} Ajustar para B3`
+                                        }
                                       </button>`
                                 }
                               </td>
@@ -260,23 +276,25 @@ export class CorrectionsView {
             </div>
             <div class="btn-group" id="subtools-tab-group">
               <button type="button" class="btn-filter ${this.activeSubTool === 'worthless' ? 'selected' : ''}" data-tool="worthless">
-                🎯 Opção Virou Pó
+                ${Icons.target(14)} Opção Virou Pó
               </button>
               <button type="button" class="btn-filter ${this.activeSubTool === 'split' ? 'selected' : ''}" data-tool="split">
-                ⚡ Desdobramento (Split)
+                ${Icons.zap(14)} Desdobramento (Split)
               </button>
               <button type="button" class="btn-filter ${this.activeSubTool === 'reverse_split' ? 'selected' : ''}" data-tool="reverse_split">
-                🔄 Grupamento
+                ${Icons.gitMerge(14)} Grupamento
               </button>
               <button type="button" class="btn-filter ${this.activeSubTool === 'subscription' ? 'selected' : ''}" data-tool="subscription">
-                📝 Subscrição / Bonificação
+                ${Icons.plusCircle(14)} Subscrição / Bonificação
               </button>
             </div>
           </div>
 
           <!-- 1. Opção Virou Pó -->
           <div class="sub-tool-panel ${this.activeSubTool === 'worthless' ? '' : 'hidden-el'}" id="panel-worthless">
-            <h4 style="color: #fff; margin-bottom: 6px;">Baixar Opção por Expiração (Virou Pó)</h4>
+            <h4 style="color: #fff; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+              ${Icons.target(18, 'text-danger')} Baixar Opção por Expiração (Virou Pó)
+            </h4>
             <p class="card-subtitle" style="margin-bottom: 16px;">
               Gera automaticamente uma venda a <strong>R$ 0,00</strong> na data do vencimento. Isso zera a quantidade em custódia e reconhece o prejuízo de 100% do prêmio para fins contábeis e fiscais (DARF).
             </p>
@@ -313,7 +331,9 @@ export class CorrectionsView {
 
           <!-- 2. Desdobramento (Split) -->
           <div class="sub-tool-panel ${this.activeSubTool === 'split' ? '' : 'hidden-el'}" id="panel-split">
-            <h4 style="color: #fff; margin-bottom: 6px;">Desdobramento de Ações / Cotas (Split)</h4>
+            <h4 style="color: #fff; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+              ${Icons.zap(18, 'text-warning')} Desdobramento de Ações / Cotas (Split)
+            </h4>
             <p class="card-subtitle" style="margin-bottom: 16px;">
               Multiplica a quantidade de ações pelo fator do desdobramento e divide o preço médio proporcionalmente, sem alterar o custo total investido.
             </p>
@@ -346,7 +366,7 @@ export class CorrectionsView {
                 ${Button.generateHtml({
                   id: 'btn-submit-split',
                   label: 'Aplicar Desdobramento',
-                  icon: Icons.refresh(16),
+                  icon: Icons.zap(16),
                   variant: 'primary',
                 })}
               </div>
@@ -355,7 +375,9 @@ export class CorrectionsView {
 
           <!-- 3. Grupamento (Reverse Split) -->
           <div class="sub-tool-panel ${this.activeSubTool === 'reverse_split' ? '' : 'hidden-el'}" id="panel-reverse-split">
-            <h4 style="color: #fff; margin-bottom: 6px;">Grupamento de Ações / Cotas (Reverse Split)</h4>
+            <h4 style="color: #fff; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+              ${Icons.gitMerge(18, 'text-info')} Grupamento de Ações / Cotas (Reverse Split)
+            </h4>
             <p class="card-subtitle" style="margin-bottom: 16px;">
               Agrupa múltiplos de ações em uma única ação, multiplicando o preço médio proporcionalmente.
             </p>
@@ -387,7 +409,7 @@ export class CorrectionsView {
                 ${Button.generateHtml({
                   id: 'btn-submit-reverse',
                   label: 'Aplicar Grupamento',
-                  icon: Icons.undo(16),
+                  icon: Icons.gitMerge(16),
                   variant: 'primary',
                 })}
               </div>
@@ -396,7 +418,9 @@ export class CorrectionsView {
 
           <!-- 4. Subscrição / Bonificação -->
           <div class="sub-tool-panel ${this.activeSubTool === 'subscription' ? '' : 'hidden-el'}" id="panel-subscription">
-            <h4 style="color: #fff; margin-bottom: 6px;">Lançar Subscrição ou Bonificação de Ações/Cotas</h4>
+            <h4 style="color: #fff; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+              ${Icons.plusCircle(18, 'text-success')} Lançar Subscrição ou Bonificação de Ações/Cotas
+            </h4>
             <p class="card-subtitle" style="margin-bottom: 16px;">
               Adiciona novas cotas subscritas pelo preço de emissão ou cotas bonificadas (preço R$ 0,00 ou valor homologado).
             </p>
@@ -421,7 +445,7 @@ export class CorrectionsView {
                 ${Button.generateHtml({
                   id: 'btn-submit-sub',
                   label: 'Lançar Subscrição',
-                  icon: Icons.check(16),
+                  icon: Icons.plusCircle(16),
                   variant: 'success',
                 })}
               </div>

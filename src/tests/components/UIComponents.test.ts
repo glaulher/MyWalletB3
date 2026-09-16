@@ -22,6 +22,20 @@ describe('UI Reusable Components', () => {
     const chevronSvg = Icons.chevronDown(16);
     expect(chevronSvg).toContain('<svg');
     expect(chevronSvg).toContain('width="16"');
+
+    const targetSvg = Icons.target(16);
+    expect(targetSvg).toContain('<svg');
+    expect(targetSvg).toContain('width="16"');
+
+    const zapSvg = Icons.zap(14);
+    expect(zapSvg).toContain('<svg');
+    expect(zapSvg).toContain('polygon');
+
+    const gitMergeSvg = Icons.gitMerge(14);
+    expect(gitMergeSvg).toContain('<svg');
+
+    const plusCircleSvg = Icons.plusCircle(14);
+    expect(plusCircleSvg).toContain('<svg');
   });
 
   it('Button should generate valid HTML with variants and icons', () => {

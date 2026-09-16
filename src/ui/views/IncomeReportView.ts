@@ -172,7 +172,7 @@ export class IncomeReportView {
         if (item) {
           await navigator.clipboard.writeText(item.description);
           const originalText = btn.innerHTML;
-          btn.innerHTML = '✅ Copiado!';
+          btn.innerHTML = `${Icons.check(14)} Copiado!`;
           setTimeout(() => {
             btn.innerHTML = originalText;
           }, 2000);

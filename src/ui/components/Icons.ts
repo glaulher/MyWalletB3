@@ -35,7 +35,12 @@ export type IconName =
   | 'alertCircle'
   | 'info'
   | 'chevronDown'
-  | 'chevronRight';
+  | 'chevronRight'
+  | 'target'
+  | 'zap'
+  | 'gitMerge'
+  | 'plusCircle'
+  | 'layers';
 
 export class Icons {
   /**
@@ -284,5 +289,41 @@ export class Icons {
 
   static chevronRight(size: number = 18, className: string = ''): string {
     return this.wrap(`<polyline points="9 18 15 12 9 6"/>`, size, className);
+  }
+
+  static target(size: number = 18, className: string = ''): string {
+    return this.wrap(
+      `<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>`,
+      size,
+      className,
+    );
+  }
+
+  static zap(size: number = 18, className: string = ''): string {
+    return this.wrap(`<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>`, size, className);
+  }
+
+  static gitMerge(size: number = 18, className: string = ''): string {
+    return this.wrap(
+      `<circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/>`,
+      size,
+      className,
+    );
+  }
+
+  static plusCircle(size: number = 18, className: string = ''): string {
+    return this.wrap(
+      `<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>`,
+      size,
+      className,
+    );
+  }
+
+  static layers(size: number = 18, className: string = ''): string {
+    return this.wrap(
+      `<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>`,
+      size,
+      className,
+    );
   }
 }

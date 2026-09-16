@@ -694,6 +694,9 @@ body {
 }
 
 .btn-group .btn-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: transparent;
   border: none;
   color: var(--text-muted);
