@@ -342,6 +342,8 @@ body {
 
 .chart-card {
   margin-bottom: 0;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .card-title {
@@ -370,6 +372,9 @@ body {
   margin-top: 16px;
   display: flex;
   justify-content: center;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .allocation-chart-container {
@@ -583,13 +588,35 @@ body {
 /* Column Chart Component */
 .column-chart-container {
   width: 100%;
+  min-width: 0;
   display: flex;
-  justify-content: center;
-  align-items: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: #334155 rgba(15, 23, 42, 0.6);
+}
+
+.column-chart-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.column-chart-container::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 4px;
+}
+
+.column-chart-container::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+
+.column-chart-container::-webkit-scrollbar-thumb:hover {
+  background: #475569;
 }
 
 .column-chart-svg {
-  width: 100%;
+  display: block;
   max-height: 280px;
   overflow: visible;
 }

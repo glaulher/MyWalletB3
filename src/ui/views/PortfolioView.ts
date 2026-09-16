@@ -140,7 +140,7 @@ export class PortfolioView {
             <div class="card-header-flex">
               <div>
                 <h3 class="card-title">Alocação por Ativo</h3>
-                <p class="card-subtitle">Distribuição de custo por código de negociação</p>
+                <p class="card-subtitle">Distribuição de custo por código de negociação (role horizontalmente para navegar entre os ativos)</p>
               </div>
             </div>
             <div id="portfolio-chart-by-asset" class="chart-wrapper"></div>
@@ -361,7 +361,7 @@ export class PortfolioView {
 
     const assetChartContainer = this.container.querySelector('#portfolio-chart-by-asset');
     if (assetChartContainer) {
-      assetChartContainer.appendChild(ColumnChart.render(assetItems, 560, 260));
+      assetChartContainer.appendChild(ColumnChart.render(assetItems, 560, 260, 68));
     }
 
     // 2. Donut Chart by Category (FII, FI-Infra, Ações, BDR, Opções)

@@ -7,15 +7,25 @@ export interface ColumnChartItem {
 
 export class ColumnChart {
   /**
-   * Generates pure SVG string with coordinate calculations.
+   * Generates pure SVG string with coordinate calculations and horizontal scrolling support.
    */
-  static generateSvg(items: ColumnChartItem[], width = 560, height = 280): string {
+  static generateSvg(
+    items: ColumnChartItem[],
+    width = 560,
+    height = 280,
+    minSlotWidth = 64,
+  ): string {
     if (!items || items.length === 0 || items.every((item) => item.value <= 0)) {
       return `<div class="chart-empty">Nenhum dado para exibir no gráfico</div>`;
     }
 
-    const padding = { top: 32, right: 24, bottom: 44, left: 64 };
-    const chartWidth = width - padding.left - padding.right;
+    const padding = { top: 32, right: 32, bottom: 48, left: 64 };
+    const barCount = items.length;
+
+    // Calculate dynamic total width to ensure every bar has enough room for labels without collision
+    const neededWidth = padding.left + padding.right + barCount * minSlotWidth;
+    const actualWidth = Math.max(width, neededWidth);
+    const chartWidth = actualWidth - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
 
     const maxValue = Math.max(...items.map((i) => i.value), 1);
@@ -40,9 +50,8 @@ export class ColumnChart {
     }
 
     // Draw Columns
-    const barCount = items.length;
     const slotWidth = chartWidth / barCount;
-    const barWidth = Math.min(42, Math.max(16, slotWidth * 0.65));
+    const barWidth = Math.min(44, Math.max(18, slotWidth * 0.55));
 
     items.forEach((item, idx) => {
       const barHeight = (item.value / yAxisMax) * chartHeight;
@@ -62,18 +71,18 @@ export class ColumnChart {
             barHeight > 18
               ? `<text x="${x + barWidth / 2}" y="${y - 6}" text-anchor="middle" fill="#e2e8f0"
                        font-size="10px" font-weight="bold" font-family="ui-monospace, monospace">
-                  R$ ${Math.round(item.value)}
+                  R$ ${Math.round(item.value).toLocaleString('pt-BR')}
                 </text>`
               : ''
           }
           <text x="${x + barWidth / 2}" y="${padding.top + chartHeight + 18}" text-anchor="middle"
-                fill="#f1f5f9" font-size="11px" font-weight="600">
+                fill="#f1f5f9" font-size="11px" font-weight="600" font-family="ui-monospace, monospace">
             ${item.label}
           </text>
           ${
             item.percentage !== undefined
               ? `<text x="${x + barWidth / 2}" y="${padding.top + chartHeight + 32}" text-anchor="middle"
-                       fill="#94a3b8" font-size="9px">
+                       fill="#94a3b8" font-size="10px">
                   ${item.percentage.toFixed(1)}%
                 </text>`
               : ''
@@ -83,7 +92,7 @@ export class ColumnChart {
     });
 
     return `
-      <svg width="100%" height="100%" viewBox="0 0 ${width} ${height}" class="column-chart-svg">
+      <svg width="${actualWidth}" height="${height}" viewBox="0 0 ${actualWidth} ${height}" class="column-chart-svg" style="min-width: 100%; display: block;">
         ${elements}
       </svg>
     `;
@@ -92,10 +101,15 @@ export class ColumnChart {
   /**
    * Renders a vertical column/bar chart into an HTMLElement.
    */
-  static render(items: ColumnChartItem[], width = 560, height = 280): HTMLElement {
+  static render(
+    items: ColumnChartItem[],
+    width = 560,
+    height = 280,
+    minSlotWidth = 64,
+  ): HTMLElement {
     const container = document.createElement('div');
     container.className = 'column-chart-container';
-    container.innerHTML = this.generateSvg(items, width, height);
+    container.innerHTML = this.generateSvg(items, width, height, minSlotWidth);
     return container;
   }
 }
