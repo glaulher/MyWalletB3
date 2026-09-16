@@ -41,4 +41,22 @@ describe('ColumnChart', () => {
     expect(svgString).toContain('ASSET1');
     expect(svgString).toContain('ASSET20');
   });
+
+  it('should render dual comparative bars with legend and gain/loss percentages when compareValue is provided', () => {
+    const items: ColumnChartItem[] = [
+      { label: 'PETR4', value: 1000, compareValue: 1200 }, // Gain +20%
+      { label: 'VALE3', value: 1500, compareValue: 1350 }, // Loss -10%
+    ];
+
+    const svgString = ColumnChart.generateSvg(items, 560, 280);
+
+    expect(svgString).toContain('chart-legend');
+    expect(svgString).toContain('Custo Investido');
+    expect(svgString).toContain('Valor Atual (Lucro)');
+    expect(svgString).toContain('Valor Atual (Prejuízo)');
+    expect(svgString).toContain('+20.0%');
+    expect(svgString).toContain('-10.0%');
+    expect(svgString).toContain('PETR4');
+    expect(svgString).toContain('VALE3');
+  });
 });
