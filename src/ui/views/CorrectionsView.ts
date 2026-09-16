@@ -86,27 +86,21 @@ export class CorrectionsView {
               <p class="card-subtitle">Cruze a custódia calculada no aplicativo com o extrato oficial de custódia da B3</p>
             </div>
             <input type="file" id="posicao-file-input" accept=".xlsx" class="hidden-input" />
-            <div style="display: flex; gap: 10px;">
-              ${Button.generateHtml({
-                id: 'btn-upload-posicao',
-                label: 'Subir Planilha de Posição (posicao-*.xlsx)',
-                icon: Icons.upload(16),
-                variant: 'primary',
-              })}
-            </div>
           </div>
 
           <div class="reconciliation-upload-box">
             <div class="svg-icon" style="color: #22c55e; margin-bottom: 8px;">${Icons.fileSpreadsheet(32)}</div>
-            <h4 class="reconciliation-upload-title">Envie seu arquivo de Posição da B3</h4>
+            <h4 class="reconciliation-upload-title">${this.reconciliationResults ? 'Substituir ou Atualizar Arquivo de Posição' : 'Envie seu arquivo de Posição da B3'}</h4>
             <p class="reconciliation-upload-desc">
               Baixe a planilha <strong>Posição</strong> no Portal da B3 (menu <em>Extratos &gt; Posição &gt; Exportar Excel</em>). O sistema identificará automaticamente opções que viraram pó, desdobramentos (splits), grupamentos e sobras de subscrição.
             </p>
             ${Button.generateHtml({
               id: 'btn-trigger-upload',
-              label: 'Selecionar Arquivo posicao-*.xlsx',
+              label: this.reconciliationResults
+                ? 'Selecionar Outra Planilha de Posição'
+                : 'Selecionar Planilha da Posição (posicao-*.xlsx)',
               icon: Icons.folderOpen(16),
-              variant: 'secondary',
+              variant: 'primary',
             })}
           </div>
 
@@ -442,10 +436,8 @@ export class CorrectionsView {
 
   private bindEvents(positions: ReturnType<AveragePriceCalculator['calculate']>): void {
     const fileInput = this.container.querySelector('#posicao-file-input') as HTMLInputElement;
-    const btnUpload = this.container.querySelector('#btn-upload-posicao');
     const btnTriggerUpload = this.container.querySelector('#btn-trigger-upload');
 
-    btnUpload?.addEventListener('click', () => fileInput.click());
     btnTriggerUpload?.addEventListener('click', () => fileInput.click());
 
     fileInput?.addEventListener('change', async (e) => {
