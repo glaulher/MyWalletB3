@@ -27,7 +27,8 @@ export class CorrectionsView {
   private b3Items: B3PositionItem[] | null = null;
   private reconciliationResults: ReconciliationItem[] | null = null;
   private filterStatus: 'all' | 'diffs' | 'matched' = 'diffs';
-  private activeSubTool: 'worthless' | 'split' | 'reverse_split' | 'subscription' = 'worthless';
+  private activeSubTool: 'worthless' | 'split' | 'reverse_split' | 'subscription' | 'conversion' =
+    'worthless';
   private statusMessage: { text: string; type: 'success' | 'info' | 'error' } | null = null;
 
   constructor(
@@ -360,6 +361,9 @@ export class CorrectionsView {
               <button type="button" class="btn-filter ${this.activeSubTool === 'subscription' ? 'selected' : ''}" data-tool="subscription">
                 ${Icons.plusCircle(14)} Subscrição / Bonificação
               </button>
+              <button type="button" class="btn-filter ${this.activeSubTool === 'conversion' ? 'selected' : ''}" data-tool="conversion">
+                ${Icons.refresh(14)} Conversão / Mudança de Ticker (ex: IRDM11 ➔ IRIM11)
+              </button>
             </div>
           </div>
 
@@ -526,6 +530,61 @@ export class CorrectionsView {
                   label: 'Lançar Subscrição',
                   icon: Icons.plusCircle(16),
                   variant: 'success',
+                })}
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Conversão / Incorporação de Ativos (Mudança de Ticker) -->
+          <div class="sub-tool-panel ${this.activeSubTool === 'conversion' ? '' : 'hidden-el'}" id="panel-conversion">
+            <h4 style="color: #fff; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+              ${Icons.refresh(18, 'text-success')} Conversão / Incorporação de Ativo (Mudança de Ticker)
+            </h4>
+            <p class="card-subtitle" style="margin-bottom: 16px;">
+              Utilize quando um fundo ou ação foi incorporado ou mudou de código (como o <strong>IRDM11 incorporado pelo IRIM11</strong>). 
+              A ferramenta dá baixa técnica em todas as cotas antigas pelo preço médio histórico (lucro R$ 0,00, sem imposto) e registra a entrada das novas cotas, 
+              transferindo o custo de aquisição acumulado sem distorcer seu patrimônio ou seu Preço Médio.
+            </p>
+            <div class="correction-form-grid">
+              <div class="form-group">
+                <label class="form-label">Ativo de Origem (Antigo)</label>
+                <select id="conv-old-ticker-select" class="select-input">
+                  ${
+                    positions.filter((p) => p.quantity > 0).length === 0
+                      ? `<option value="">Nenhum ativo com saldo positivo em carteira</option>`
+                      : positions
+                          .filter((p) => p.quantity > 0)
+                          .map(
+                            (p) => `<option value="${p.ticker}">
+                              ${p.ticker} — ${p.quantity} un (PM R$ ${p.averagePrice.toFixed(2)} • Custo R$ ${p.totalCost.toFixed(2)})
+                            </option>`,
+                          )
+                          .join('')
+                  }
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Ativo de Destino (Novo Ticker)</label>
+                <input type="text" id="conv-new-ticker" class="text-input font-mono" placeholder="Ex: IRIM11" style="text-transform: uppercase;" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Nova Quantidade Recebida</label>
+                <input type="number" id="conv-new-qty" class="text-input" placeholder="Ex: 12" min="0.0001" step="any" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Data do Evento</label>
+                <input type="date" id="conv-date" class="text-input" value="${new Date().toISOString().split('T')[0]}" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Parcela em Dinheiro (R$ - opcional)</label>
+                <input type="number" id="conv-cash" class="text-input" placeholder="0,00" min="0" step="0.01" value="0" />
+              </div>
+              <div>
+                ${Button.generateHtml({
+                  id: 'btn-submit-conversion',
+                  label: 'Executar Conversão',
+                  icon: Icons.check(16),
+                  variant: 'primary',
                 })}
               </div>
             </div>
@@ -821,6 +880,62 @@ export class CorrectionsView {
 
       this.statusMessage = {
         text: `Entrada de ${qty} cotas de ${ticker} a R$ ${price.toFixed(2)} lançada com sucesso!`,
+        type: 'success',
+      };
+      if (this.onDataChanged) await this.onDataChanged();
+      await this.render();
+    });
+
+    // Manual Tool 5: Conversão / Incorporação de Ativos
+    const btnSubmitConv = this.container.querySelector<HTMLButtonElement>('#btn-submit-conversion');
+    btnSubmitConv?.addEventListener('click', async () => {
+      const selectOld = this.container.querySelector(
+        '#conv-old-ticker-select',
+      ) as HTMLSelectElement;
+      const inputNew = this.container.querySelector('#conv-new-ticker') as HTMLInputElement;
+      const inputQty = this.container.querySelector('#conv-new-qty') as HTMLInputElement;
+      const inputDate = this.container.querySelector('#conv-date') as HTMLInputElement;
+      const inputCash = this.container.querySelector('#conv-cash') as HTMLInputElement;
+
+      const oldTicker = selectOld?.value.toUpperCase().trim();
+      const newTicker = inputNew?.value.toUpperCase().trim();
+      const newQty = parseFloat(inputQty?.value);
+      const cash = parseFloat(inputCash?.value) || 0;
+      const date = inputDate.value ? new Date(inputDate.value) : new Date();
+
+      if (!oldTicker || !newTicker) {
+        alert('Por favor, selecione o ativo de origem e informe o novo ticker de destino.');
+        return;
+      }
+      if (oldTicker === newTicker) {
+        alert('O novo ticker deve ser diferente do ativo de origem.');
+        return;
+      }
+      if (isNaN(newQty) || newQty <= 0) {
+        alert('Por favor, informe a nova quantidade de cotas/ações recebidas (maior que zero).');
+        return;
+      }
+
+      const oldPos = positions.find((p) => p.ticker === oldTicker);
+      if (!oldPos || oldPos.quantity <= 0) {
+        alert(`O ativo de origem ${oldTicker} não possui saldo positivo em carteira.`);
+        return;
+      }
+
+      const [sellOp, buyOp] = this.reconciliationService.createConversionOperations(
+        oldTicker,
+        oldPos.quantity,
+        oldPos.averagePrice,
+        newTicker,
+        newQty,
+        date,
+        cash,
+      );
+
+      await this.operationRepo.addAll([sellOp, buyOp]);
+
+      this.statusMessage = {
+        text: `Conversão realizada com sucesso! As ${oldPos.quantity} cotas de ${oldTicker} foram baixadas e substituídas por ${newQty} cotas de ${newTicker} com Preço Médio de R$ ${buyOp.unitPrice.toFixed(2)} (Custo total transferido: R$ ${buyOp.totalValue.toFixed(2)}).`,
         type: 'success',
       };
       if (this.onDataChanged) await this.onDataChanged();

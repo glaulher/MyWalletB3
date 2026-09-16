@@ -213,4 +213,32 @@ describe('B3PositionParser & ReconciliationService', () => {
     expect(item?.description).toContain('Comprada em');
     expect(item?.description).toContain('Vencimento B3 detectado: 20/12/2024');
   });
+
+  it('should generate paired operations for ticker conversion / incorporation without tax distortion', () => {
+    // Example: 100 IRDM11 at PM R$ 80,00 (total R$ 8.000) converted into 88 IRIM11
+    const [sellOp, buyOp] = service.createConversionOperations(
+      'IRDM11',
+      100,
+      80.0,
+      'IRIM11',
+      88,
+      new Date('2025-11-01T12:00:00'),
+      400.0, // R$ 400 received in cash amortization
+    );
+
+    // Old asset sell
+    expect(sellOp.asset).toBe('IRDM11');
+    expect(sellOp.type).toBe('sell');
+    expect(sellOp.quantity).toBe(100);
+    expect(sellOp.unitPrice).toBe(80.0); // Exactly PM -> profit = 0
+    expect(sellOp.totalValue).toBe(8000.0);
+
+    // New asset buy
+    expect(buyOp.asset).toBe('IRIM11');
+    expect(buyOp.type).toBe('buy');
+    expect(buyOp.quantity).toBe(88);
+    // Net cost: 8000 - 400 = 7600 / 88 = 86.3636...
+    expect(buyOp.totalValue).toBeCloseTo(7600.0, 2);
+    expect(buyOp.unitPrice).toBeCloseTo(86.3636, 4);
+  });
 });

@@ -288,6 +288,49 @@ export class ReconciliationService {
   }
 
   /**
+   * Generates paired operations for an asset conversion, incorporation, or ticker migration (e.g. IRDM11 -> IRIM11).
+   * 1. Technical sell of all old asset units at exact average price (lucro 0 fiscal).
+   * 2. Technical buy of new asset units transferring the historical cost.
+   */
+  createConversionOperations(
+    oldTicker: string,
+    oldQuantity: number,
+    oldAveragePrice: number,
+    newTicker: string,
+    newQuantity: number,
+    date: Date = new Date(),
+    cashReceived = 0,
+  ): [Operation, Operation] {
+    const totalCost = oldQuantity * oldAveragePrice;
+    const netCost = Math.max(0, totalCost - cashReceived);
+    const newUnitPrice = newQuantity > 0 ? netCost / newQuantity : 0;
+
+    const sellOp = new Operation(
+      `conv-sell-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      date,
+      oldTicker.toUpperCase().trim(),
+      'sell',
+      oldQuantity,
+      oldAveragePrice,
+      0,
+      `Incorporação / Conversão (${newTicker.toUpperCase().trim()})`,
+    );
+
+    const buyOp = new Operation(
+      `conv-buy-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      date,
+      newTicker.toUpperCase().trim(),
+      'buy',
+      newQuantity,
+      newUnitPrice,
+      0,
+      `Incorporação / Conversão (${oldTicker.toUpperCase().trim()})`,
+    );
+
+    return [sellOp, buyOp];
+  }
+
+  /**
    * Decodes B3 option ticker 5th character to determine expiration month (0-11) and type (CALL/PUT).
    * Calls: A-L (Jan-Dec)
    * Puts: M-X (Jan-Dec)

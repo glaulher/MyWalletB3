@@ -117,6 +117,7 @@ export class ColumnChart {
         const pctColor = diff >= 0 ? '#4ade80' : '#f87171';
 
         const tooltip = `${item.label}\nInvestido: R$ ${item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\nAtual: R$ ${cmpVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${diffSign}${diffPct.toFixed(1)}%)`;
+        const highestY = Math.min(y1, y2);
 
         elements += `
           <g class="column-bar-group">
@@ -131,6 +132,27 @@ export class ColumnChart {
                   rx="3" ry="3" fill="${color2}" class="column-bar-rect">
               <title>${tooltip}</title>
             </rect>
+
+            <!-- Rótulo de Valor Acima das Barras -->
+            ${
+              cmpVal > 0
+                ? `
+                <text x="${slotCenterX}" y="${Math.max(28, highestY - 17)}" text-anchor="middle"
+                      fill="#93c5fd" font-size="10px" font-weight="600" font-family="ui-monospace, monospace">
+                  C: R$ ${Math.round(item.value).toLocaleString('pt-BR')}
+                </text>
+                <text x="${slotCenterX}" y="${Math.max(40, highestY - 5)}" text-anchor="middle"
+                      fill="#f8fafc" font-size="11px" font-weight="bold" font-family="ui-monospace, monospace">
+                  A: R$ ${Math.round(cmpVal).toLocaleString('pt-BR')}
+                </text>
+                `
+                : `
+                <text x="${slotCenterX}" y="${highestY - 6}" text-anchor="middle"
+                      fill="#e2e8f0" font-size="11px" font-weight="bold" font-family="ui-monospace, monospace">
+                  R$ ${Math.round(item.value).toLocaleString('pt-BR')}
+                </text>
+                `
+            }
 
             <!-- Rótulo do Ativo -->
             <text x="${slotCenterX}" y="${padding.top + chartHeight + 20}" text-anchor="middle"
