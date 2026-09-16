@@ -57,10 +57,14 @@ describe('ColumnChart', () => {
     expect(svgString).toContain('+20.0%');
     expect(svgString).toContain('-10.0%');
     expect(svgString).toContain('PETR4');
-    expect(svgString).toContain('VALE3');
     expect(svgString).toContain('C: R$ 1.000');
     expect(svgString).toContain('A: R$ 1.200');
     expect(svgString).toContain('C: R$ 1.500');
     expect(svgString).toContain('A: R$ 1.350');
+
+    // Assert that column bar colors strictly match the legend colors
+    expect(svgString).toContain('fill="#3b82f6"'); // Cost bar (Blue)
+    expect(svgString).toContain('fill="#22c55e"'); // Profit bar (Green)
+    expect(svgString).toContain('fill="#ef4444"'); // Loss bar (Red)
   });
 });

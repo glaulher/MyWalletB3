@@ -99,43 +99,58 @@ export class ColumnChart {
         const x1 = slotCenterX - totalGroupWidth / 2;
         const x2 = x1 + barWidth + barGap;
 
-        // Bar 1: Cost
+        // Bar 1: Cost Investido - ALWAYS Blue (#3b82f6) as defined in the legend
         const barHeight1 = (item.value / yAxisMax) * chartHeight;
         const y1 = padding.top + chartHeight - barHeight1;
-        const color1 = item.color || '#3b82f6';
+        const color1 = '#3b82f6';
 
-        // Bar 2: Market Value
+        // Bar 2: Market Value - Green (#22c55e) for gain, Red (#ef4444) for loss as defined in the legend
+        const hasQuote = item.compareValue !== undefined && item.compareValue > 0;
         const cmpVal = item.compareValue ?? 0;
         const barHeight2 = (cmpVal / yAxisMax) * chartHeight;
         const y2 = padding.top + chartHeight - barHeight2;
         const isGain = cmpVal >= item.value;
-        const color2 = item.compareColor || (isGain ? '#22c55e' : '#ef4444');
+        const color2 = isGain ? '#22c55e' : '#ef4444';
 
         const diff = cmpVal - item.value;
         const diffPct = item.value > 0 ? (diff / item.value) * 100 : 0;
         const diffSign = diff >= 0 ? '+' : '';
         const pctColor = diff >= 0 ? '#4ade80' : '#f87171';
 
-        const tooltip = `${item.label}\nInvestido: R$ ${item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\nAtual: R$ ${cmpVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${diffSign}${diffPct.toFixed(1)}%)`;
-        const highestY = Math.min(y1, y2);
+        const tooltip = hasQuote
+          ? `${item.label}\nInvestido: R$ ${item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\nAtual: R$ ${cmpVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${diffSign}${diffPct.toFixed(1)}%)`
+          : `${item.label}\nInvestido: R$ ${item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n(Cotação não disponível)`;
+
+        const highestY = hasQuote ? Math.min(y1, y2) : y1;
 
         elements += `
           <g class="column-bar-group">
-            <!-- Barra 1: Custo -->
+            <!-- Barra 1: Custo Investido (Azul) -->
             <rect x="${x1}" y="${y1}" width="${barWidth}" height="${Math.max(barHeight1, 2)}"
                   rx="3" ry="3" fill="${color1}" class="column-bar-rect">
               <title>${tooltip}</title>
             </rect>
 
-            <!-- Barra 2: Atual -->
-            <rect x="${x2}" y="${y2}" width="${barWidth}" height="${Math.max(barHeight2, 2)}"
-                  rx="3" ry="3" fill="${color2}" class="column-bar-rect">
-              <title>${tooltip}</title>
-            </rect>
+            <!-- Barra 2: Valor Atual (Verde no Lucro / Vermelho no Prejuízo) -->
+            ${
+              hasQuote
+                ? `
+                <rect x="${x2}" y="${y2}" width="${barWidth}" height="${Math.max(barHeight2, 2)}"
+                      rx="3" ry="3" fill="${color2}" class="column-bar-rect">
+                  <title>${tooltip}</title>
+                </rect>
+                `
+                : `
+                <rect x="${x2}" y="${padding.top + chartHeight - 2}" width="${barWidth}" height="2"
+                      rx="1" ry="1" fill="#475569" class="column-bar-rect" opacity="0.3">
+                  <title>${tooltip}</title>
+                </rect>
+                `
+            }
 
             <!-- Rótulo de Valor Acima das Barras -->
             ${
-              cmpVal > 0
+              hasQuote
                 ? `
                 <text x="${slotCenterX}" y="${Math.max(28, highestY - 17)}" text-anchor="middle"
                       fill="#93c5fd" font-size="10px" font-weight="600" font-family="ui-monospace, monospace">
@@ -148,8 +163,8 @@ export class ColumnChart {
                 `
                 : `
                 <text x="${slotCenterX}" y="${highestY - 6}" text-anchor="middle"
-                      fill="#e2e8f0" font-size="11px" font-weight="bold" font-family="ui-monospace, monospace">
-                  R$ ${Math.round(item.value).toLocaleString('pt-BR')}
+                      fill="#93c5fd" font-size="11px" font-weight="bold" font-family="ui-monospace, monospace">
+                  C: R$ ${Math.round(item.value).toLocaleString('pt-BR')}
                 </text>
                 `
             }
@@ -161,10 +176,21 @@ export class ColumnChart {
             </text>
 
             <!-- % de Ganho / Perda -->
-            <text x="${slotCenterX}" y="${padding.top + chartHeight + 36}" text-anchor="middle"
-                  fill="${pctColor}" font-size="11px" font-weight="600">
-              ${diffSign}${diffPct.toFixed(1)}%
-            </text>
+            ${
+              hasQuote
+                ? `
+                <text x="${slotCenterX}" y="${padding.top + chartHeight + 36}" text-anchor="middle"
+                      fill="${pctColor}" font-size="11px" font-weight="600">
+                  ${diffSign}${diffPct.toFixed(1)}%
+                </text>
+                `
+                : `
+                <text x="${slotCenterX}" y="${padding.top + chartHeight + 36}" text-anchor="middle"
+                      fill="#64748b" font-size="10px">
+                  s/ cotação
+                </text>
+                `
+            }
           </g>
         `;
       });

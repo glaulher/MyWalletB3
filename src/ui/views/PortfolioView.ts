@@ -476,27 +476,13 @@ export class PortfolioView {
     resultMap: Map<string, PositionMarketResult>,
   ): void {
     // 1. Column Chart by Asset (Comparing Cost vs Market Value)
-    const assetColors = [
-      '#3b82f6',
-      '#10b981',
-      '#f59e0b',
-      '#8b5cf6',
-      '#ec4899',
-      '#06b6d4',
-      '#f97316',
-      '#14b8a6',
-      '#6366f1',
-      '#a855f7',
-    ];
-
-    const assetItems: ColumnChartItem[] = summary.allocationByAsset.map((a, idx) => {
+    const assetItems: ColumnChartItem[] = summary.allocationByAsset.map((a) => {
       const res = resultMap.get(a.ticker);
       return {
         label: a.ticker,
         value: a.totalCost,
         compareValue: res && res.hasQuote ? res.marketValue : undefined,
         percentage: a.percentage,
-        color: assetColors[idx % assetColors.length],
       };
     });
 
