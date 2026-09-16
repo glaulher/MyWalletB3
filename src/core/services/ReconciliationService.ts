@@ -8,6 +8,7 @@ export type DiscrepancyType =
   | 'OPTION_WORTHLESS'
   | 'SPLIT_SUSPECTED'
   | 'REVERSE_SPLIT_SUSPECTED'
+  | 'CONVERSION_SUSPECTED'
   | 'MISSING_IN_APP'
   | 'EXCESS_IN_APP'
   | 'DEFICIT_IN_APP';
@@ -27,7 +28,65 @@ export interface ReconciliationItem {
   ratio?: number;
   purchaseDate?: Date;
   expirationDate?: Date;
+  oldTicker?: string;
+  newTicker?: string;
+  googleSearchQuery?: string;
 }
+
+export const KNOWN_B3_CONVERSIONS: Record<string, { targetTicker: string; reason: string }> = {
+  IRDM11: {
+    targetTicker: 'IRIM11',
+    reason: 'O fundo IRDM11 foi incorporado pelo IRIM11 (Iridium / BTG Pactual)',
+  },
+  BRPR3: {
+    targetTicker: 'BRPR11',
+    reason: 'BR Properties realizou grupamento/conversão de ações',
+  },
+  KROT3: {
+    targetTicker: 'COGN3',
+    reason: 'Kroton mudou de código e denominação social para Cogna Educação',
+  },
+  CCPR3: {
+    targetTicker: 'SYNE3',
+    reason: 'Cyrela Commercial Properties mudou denominação social para Syn Prop & Tech',
+  },
+  SUZB5: {
+    targetTicker: 'SUZB3',
+    reason: 'Suzano unificou suas ações preferenciais (PN) em ordinárias (ON)',
+  },
+  BTOW3: {
+    targetTicker: 'AMER3',
+    reason: 'B2W e Lojas Americanas foram combinadas na Americanas S.A.',
+  },
+  LCAM3: {
+    targetTicker: 'RENT3',
+    reason: 'Unidas (Locamerica) foi incorporada pela Localiza (RENT3)',
+  },
+  SMLS3: {
+    targetTicker: 'GOLL4',
+    reason: 'Smiles Fidelidade foi incorporada pela Gol Linhas Aéreas',
+  },
+  BIDI4: {
+    targetTicker: 'INBR31',
+    reason: 'Banco Inter migrou sua listagem para a Nasdaq, negociada via BDRs INBR31',
+  },
+  BIDI11: {
+    targetTicker: 'INBR31',
+    reason: 'Banco Inter migrou sua listagem para a Nasdaq, negociada via BDRs INBR31',
+  },
+  PCAR4: {
+    targetTicker: 'PCAR3',
+    reason: 'Pão de Açúcar converteu ações preferenciais em ordinárias',
+  },
+  VVAR3: {
+    targetTicker: 'VIIA3',
+    reason: 'Via Varejo mudou o código para VIIA3',
+  },
+  VIIA3: {
+    targetTicker: 'BHIA3',
+    reason: 'Grupo Casas Bahia mudou o código para BHIA3',
+  },
+};
 
 export class ReconciliationService {
   /**
@@ -44,10 +103,70 @@ export class ReconciliationService {
     const b3Map = new Map<string, B3PositionItem>();
     b3Items.forEach((b) => b3Map.set(b.ticker.toUpperCase().trim(), b));
 
-    const allTickers = new Set([...calcMap.keys(), ...b3Map.keys()]);
+    const processedTickers = new Set<string>();
     const results: ReconciliationItem[] = [];
 
+    // Pre-pass: Detect known or correlated ticker conversions/incorporations (e.g. IRDM11 -> IRIM11)
+    for (const [oldTicker, calc] of calcMap.entries()) {
+      if (calc.quantity <= 0) continue;
+      const b3Direct = b3Map.get(oldTicker);
+      if (b3Direct && b3Direct.quantity > 0) continue; // Not an abandoned ticker
+
+      // 1. Check known conversion table
+      const known = KNOWN_B3_CONVERSIONS[oldTicker];
+      let targetTicker: string | null = null;
+      let reason: string = '';
+
+      if (known && b3Map.has(known.targetTicker)) {
+        targetTicker = known.targetTicker;
+        reason = known.reason;
+      } else {
+        // 2. Heuristic check: look for an unmatched B3 item with same prefix (e.g. IRDM / IRIM)
+        for (const [candTicker, candB3] of b3Map.entries()) {
+          if (
+            candB3.quantity > 0 &&
+            (!calcMap.has(candTicker) || calcMap.get(candTicker)!.quantity === 0)
+          ) {
+            const prefixOld = oldTicker.substring(0, 3);
+            const prefixCand = candTicker.substring(0, 3);
+            if (prefixOld === prefixCand && prefixOld.length >= 2) {
+              targetTicker = candTicker;
+              reason = `Provável incorporação ou mudança de código de ${oldTicker} para ${candTicker}`;
+              break;
+            }
+          }
+        }
+      }
+
+      if (targetTicker && b3Map.has(targetTicker)) {
+        const targetB3 = b3Map.get(targetTicker)!;
+        processedTickers.add(oldTicker);
+        processedTickers.add(targetTicker);
+
+        results.push({
+          ticker: `${oldTicker} ➔ ${targetTicker}`,
+          oldTicker,
+          newTicker: targetTicker,
+          assetType: targetB3.assetType || calc.type || 'fii',
+          productName: targetB3.productName,
+          calculatedQty: calc.quantity,
+          b3Qty: targetB3.quantity,
+          diffQty: targetB3.quantity - calc.quantity,
+          closePrice: targetB3.closePrice,
+          calculatedAvgPrice: calc.averagePrice,
+          type: 'CONVERSION_SUSPECTED',
+          description: `${reason}. Histórico do app possui ${calc.quantity} cotas de ${oldTicker}, e a B3 registra ${targetB3.quantity} cotas de ${targetTicker}.`,
+          suggestedActionLabel: `Converter ${oldTicker} ➔ ${targetTicker} (${targetB3.quantity} un)`,
+          googleSearchQuery: `${oldTicker} ${targetTicker} fato relevante conversao incorporacao b3`,
+        });
+      }
+    }
+
+    const allTickers = new Set([...calcMap.keys(), ...b3Map.keys()]);
+
     for (const ticker of allTickers) {
+      if (processedTickers.has(ticker)) continue;
+
       const calc = calcMap.get(ticker);
       const b3 = b3Map.get(ticker);
 
@@ -58,6 +177,11 @@ export class ReconciliationService {
       const closePrice = b3?.closePrice || 0;
       const assetType: AssetType = b3?.assetType || calc?.type || 'stock';
       const productName = b3?.productName;
+
+      // Skip if asset is zero both in app and in B3 (already completely liquidated in the past)
+      if (calculatedQty === 0 && b3Qty === 0) {
+        continue;
+      }
 
       // 1. Matched
       if (calculatedQty === b3Qty) {
@@ -114,6 +238,7 @@ export class ReconciliationService {
           suggestedActionLabel: 'Baixar por Expiração (Virou Pó) a R$ 0,00',
           purchaseDate,
           expirationDate,
+          googleSearchQuery: `${ticker} vencimento opcao exercicio b3`,
         });
         continue;
       }
@@ -134,6 +259,7 @@ export class ReconciliationService {
           ratio,
           description: `Provável desdobramento de 1 para ${ratio} (B3 possui ${ratio}x a quantidade calculada).`,
           suggestedActionLabel: `Aplicar Desdobramento (Split 1:${ratio})`,
+          googleSearchQuery: `${ticker} desdobramento split fato relevante b3`,
         });
         continue;
       }
@@ -154,6 +280,7 @@ export class ReconciliationService {
           ratio,
           description: `Provável grupamento de ${ratio} para 1 (B3 possui 1/${ratio} da quantidade calculada).`,
           suggestedActionLabel: `Aplicar Grupamento (${ratio}:1)`,
+          googleSearchQuery: `${ticker} grupamento reverse split fato relevante b3`,
         });
         continue;
       }
@@ -172,6 +299,7 @@ export class ReconciliationService {
           type: 'MISSING_IN_APP',
           description: `Ativo com ${b3Qty} cota(s) na B3 sem movimentações registradas no aplicativo.`,
           suggestedActionLabel: `Importar Posição B3 (${b3Qty} cotas a R$ ${closePrice.toFixed(2)})`,
+          googleSearchQuery: `${ticker} incorporacao bonificacao subscricao fato relevante b3`,
         });
         continue;
       }
@@ -188,11 +316,9 @@ export class ReconciliationService {
           closePrice,
           calculatedAvgPrice,
           type: 'EXCESS_IN_APP',
-          description:
-            b3Qty === 0
-              ? `Ativo com posição zerada na B3, mas com saldo de ${calculatedQty} no app (venda total).`
-              : `App possui ${calculatedQty - b3Qty} cota(s) a mais que a B3 (venda parcial não importada).`,
-          suggestedActionLabel: `Ajustar Saída (-${calculatedQty - b3Qty} cotas)`,
+          description: `Custódia no aplicativo (${calculatedQty}) é maior que a oficial da B3 (${b3Qty}). Venda ou evento corporativo pendente.`,
+          suggestedActionLabel: `Ajustar Saída (${Math.abs(diffQty)} un a R$ ${closePrice.toFixed(2)})`,
+          googleSearchQuery: `${ticker} incorporacao liquidacao amortizacao fato relevante b3`,
         });
         continue;
       }
@@ -208,8 +334,9 @@ export class ReconciliationService {
         closePrice,
         calculatedAvgPrice,
         type: 'DEFICIT_IN_APP',
-        description: `B3 possui ${diffQty} cota(s) a mais que o app (subscrição, bonificação ou compras faltantes).`,
-        suggestedActionLabel: `Lançar Entrada (+${diffQty} cotas)`,
+        description: `Custódia no aplicativo (${calculatedQty}) é menor que a oficial da B3 (${b3Qty}). Compra, bonificação ou subscrição pendente.`,
+        suggestedActionLabel: `Ajustar Entrada (${diffQty} un a R$ ${closePrice.toFixed(2)})`,
+        googleSearchQuery: `${ticker} subscricao bonificacao split fato relevante b3`,
       });
     }
 

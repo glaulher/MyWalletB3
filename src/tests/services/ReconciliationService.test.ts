@@ -241,4 +241,40 @@ describe('B3PositionParser & ReconciliationService', () => {
     expect(buyOp.totalValue).toBeCloseTo(7600.0, 2);
     expect(buyOp.unitPrice).toBeCloseTo(86.3636, 4);
   });
+
+  it('should automatically pair known conversions (e.g. IRDM11 -> IRIM11) in reconcile() and generate Google query', () => {
+    const calcPositions = [
+      new ConsolidatedPosition('IRDM11', 12, 78.5, 942.0, 'fii'),
+      new ConsolidatedPosition('PETR4', 0, 0, 0, 'stock'), // Liquidated past asset
+    ];
+    const b3Items = [
+      {
+        ticker: 'IRIM11',
+        productName: 'IRIDIUM',
+        assetType: 'fii' as const,
+        quantity: 12,
+        closePrice: 75.0,
+        updatedValue: 900.0,
+        institutions: ['XP'],
+      },
+    ];
+
+    const results = service.reconcile(calcPositions, b3Items);
+
+    // Liquidated past asset PETR4 with 0/0 should be skipped
+    expect(results.find((r) => r.ticker === 'PETR4')).toBeUndefined();
+
+    // IRDM11 and IRIM11 should be unified into a single CONVERSION_SUSPECTED discrepancy
+    const convItem = results.find((r) => r.type === 'CONVERSION_SUSPECTED');
+    expect(convItem).toBeDefined();
+    expect(convItem?.oldTicker).toBe('IRDM11');
+    expect(convItem?.newTicker).toBe('IRIM11');
+    expect(convItem?.calculatedQty).toBe(12);
+    expect(convItem?.b3Qty).toBe(12);
+    expect(convItem?.description).toContain('IRDM11');
+    expect(convItem?.description).toContain('IRIM11');
+    expect(convItem?.googleSearchQuery).toBe(
+      'IRDM11 IRIM11 fato relevante conversao incorporacao b3',
+    );
+  });
 });

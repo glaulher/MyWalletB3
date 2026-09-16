@@ -224,6 +224,17 @@ export class CorrectionsView {
               }
             </div>
 
+            ${
+              this.reconciliationResults.some((r) => r.type === 'CONVERSION_SUSPECTED')
+                ? `<div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 8px; padding: 12px 16px; margin: 16px 0; display: flex; align-items: center; gap: 12px; color: #93c5fd; font-size: 13px;">
+                    <div style="color: #60a5fa; flex-shrink: 0;">${Icons.refresh(20)}</div>
+                    <div>
+                      <strong>Mudança de Ticker / Incorporação Identificada:</strong> O sistema detectou ativos antigos no histórico que foram incorporados ou mudaram de código na B3 (ex: <code>IRDM11</code> ➔ <code>IRIM11</code>). Você pode aplicar a conversão diretamente com 1 clique ou clicar no botão <strong>Google</strong> para consultar o fato relevante oficial da operação.
+                    </div>
+                   </div>`
+                : ''
+            }
+
             <!-- Tabela de Conciliação -->
             <div class="table-responsive">
               <table class="data-table">
@@ -234,7 +245,7 @@ export class CorrectionsView {
                     <th class="text-right">Qtd no App</th>
                     <th class="text-right">Qtd na B3</th>
                     <th class="text-right">Diferença</th>
-                    <th>Diagnóstico</th>
+                    <th>Diagnóstico & Justificativa</th>
                     <th class="text-right">Ação Recomendada</th>
                   </tr>
                 </thead>
@@ -260,6 +271,10 @@ export class CorrectionsView {
                               badgeClass = 'badge-status-powder';
                               badgeIcon = Icons.target(12);
                               badgeLabel = 'Virou Pó (Expirada)';
+                            } else if (r.type === 'CONVERSION_SUSPECTED') {
+                              badgeClass = 'badge-status-split';
+                              badgeIcon = Icons.refresh(12);
+                              badgeLabel = `Incorporação / Conversão (${r.oldTicker} ➔ ${r.newTicker})`;
                             } else if (r.type === 'SPLIT_SUSPECTED') {
                               badgeClass = 'badge-status-split';
                               badgeIcon = Icons.zap(12);
@@ -317,15 +332,26 @@ export class CorrectionsView {
                                 ${
                                   r.type === 'MATCH'
                                     ? `<span class="text-muted" style="font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">${Icons.shieldCheck(14, 'text-success')} OK</span>`
-                                    : `<button type="button" class="btn btn-small btn-secondary btn-apply-single-recon" data-ticker="${r.ticker}" style="display: inline-flex; align-items: center; gap: 4px;">
+                                    : `<div style="display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; flex-wrap: wrap;">
                                         ${
-                                          r.type === 'OPTION_WORTHLESS'
-                                            ? `${Icons.trash(13)} Baixar a R$ 0`
-                                            : r.type === 'SPLIT_SUSPECTED'
-                                              ? `${Icons.zap(13)} Aplicar Split`
-                                              : `${Icons.check(13)} Ajustar para B3`
+                                          r.googleSearchQuery
+                                            ? `<button type="button" class="btn btn-small btn-secondary btn-google-search" data-query="${encodeURIComponent(r.googleSearchQuery)}" title="Pesquisar detalhes do evento corporativo no Google" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; font-size: 11px;">
+                                                ${Icons.search(12)} Google
+                                               </button>`
+                                            : ''
                                         }
-                                      </button>`
+                                        <button type="button" class="btn btn-small ${r.type === 'CONVERSION_SUSPECTED' ? 'btn-primary' : 'btn-secondary'} btn-apply-single-recon" data-ticker="${r.ticker}" style="display: inline-flex; align-items: center; gap: 4px;">
+                                          ${
+                                            r.type === 'CONVERSION_SUSPECTED'
+                                              ? `${Icons.refresh(13)} Converter (${r.b3Qty} un)`
+                                              : r.type === 'OPTION_WORTHLESS'
+                                                ? `${Icons.trash(13)} Baixar a R$ 0`
+                                                : r.type === 'SPLIT_SUSPECTED'
+                                                  ? `${Icons.zap(13)} Aplicar Split`
+                                                  : `${Icons.check(13)} Ajustar para B3`
+                                          }
+                                        </button>
+                                       </div>`
                                 }
                               </td>
                             </tr>
@@ -681,6 +707,24 @@ export class CorrectionsView {
       });
     });
 
+    // Action: Google Search for corporate event
+    const googleSearchButtons =
+      this.container.querySelectorAll<HTMLButtonElement>('.btn-google-search');
+    googleSearchButtons.forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const query = btn.dataset.query;
+        if (!query) return;
+        const targetUrl = `https://www.google.com/search?q=${query}`;
+        try {
+          const { openUrl } = await import('@tauri-apps/plugin-opener');
+          await openUrl(targetUrl);
+        } catch {
+          window.open(targetUrl, '_blank');
+        }
+      });
+    });
+
     // Action: Apply All Reconciliations
     const btnApplyAll = this.container.querySelector<HTMLButtonElement>('#btn-apply-all-recon');
     btnApplyAll?.addEventListener('click', async () => {
@@ -950,7 +994,20 @@ export class CorrectionsView {
   ): Promise<void> {
     const pos = positions.find((p) => p.ticker === item.ticker);
 
-    if (item.type === 'OPTION_WORTHLESS') {
+    if (item.type === 'CONVERSION_SUSPECTED' && item.oldTicker && item.newTicker) {
+      const oldPos = positions.find((p) => p.ticker === item.oldTicker);
+      const oldQty = oldPos ? oldPos.quantity : item.calculatedQty;
+      const oldPm = oldPos ? oldPos.averagePrice : item.calculatedAvgPrice || 0;
+      const [sellOp, buyOp] = this.reconciliationService.createConversionOperations(
+        item.oldTicker,
+        oldQty,
+        oldPm,
+        item.newTicker,
+        item.b3Qty,
+        new Date(),
+      );
+      await this.operationRepo.addAll([sellOp, buyOp]);
+    } else if (item.type === 'OPTION_WORTHLESS') {
       const op = this.reconciliationService.createWorthlessOptionOperation(
         item.ticker,
         item.calculatedQty,
@@ -989,8 +1046,12 @@ export class CorrectionsView {
     }
 
     if (rerender) {
+      const displayLabel =
+        item.type === 'CONVERSION_SUSPECTED' && item.oldTicker && item.newTicker
+          ? `${item.oldTicker} ➔ ${item.newTicker}`
+          : item.ticker;
       this.statusMessage = {
-        text: `Ativo ${item.ticker} conciliado com sucesso com a B3!`,
+        text: `Ativo ${displayLabel} conciliado com sucesso com a B3!`,
         type: 'success',
       };
       if (this.onDataChanged) await this.onDataChanged();
