@@ -9,6 +9,7 @@ import { Icons } from '../components/Icons.ts';
 import { PortfolioView } from './PortfolioView.ts';
 import { TradesView } from './TradesView.ts';
 import { OperationsView } from './OperationsView.ts';
+import { CorrectionsView } from './CorrectionsView.ts';
 import { DarfView } from './DarfView.ts';
 import { IncomeReportView } from './IncomeReportView.ts';
 import { BackupView } from './BackupView.ts';
@@ -24,6 +25,7 @@ export class DashboardView {
     { id: 'wallet', label: 'Carteira', icon: Icons.wallet(16) },
     { id: 'trades', label: 'Compras e Vendas', icon: Icons.refresh(16) },
     { id: 'operations', label: 'Extrato', icon: Icons.fileText(16) },
+    { id: 'corrections', label: 'Correções', icon: Icons.shieldCheck(16) },
     { id: 'darf', label: 'Calculadora DARF', icon: Icons.calculator(16) },
     { id: 'irpf', label: 'Informe IRPF', icon: Icons.fileSpreadsheet(16) },
     { id: 'backup', label: 'Backup & Dados', icon: Icons.database(16) },
@@ -137,6 +139,13 @@ export class DashboardView {
       case 'operations': {
         const opsView = new OperationsView(contentArea);
         await opsView.render();
+        break;
+      }
+      case 'corrections': {
+        const correctionsView = new CorrectionsView(contentArea, async () => {
+          await this.render();
+        });
+        await correctionsView.render();
         break;
       }
       case 'darf': {

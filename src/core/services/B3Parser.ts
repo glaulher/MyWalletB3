@@ -381,7 +381,6 @@ export class B3Parser {
       'SNID11',
       'EXES11',
       'INFR11',
-      'IRIM11',
       'BIDB11',
       'GURG11',
       'RBIF11',

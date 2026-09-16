@@ -977,3 +977,104 @@ body {
 .profit-neutral {
   color: var(--text-muted);
 }
+
+/* Corrections & Reconciliation View */
+.reconciliation-upload-box {
+  background: rgba(15, 23, 42, 0.6);
+  border: 2px dashed rgba(51, 65, 85, 0.8);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  margin-bottom: 20px;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.reconciliation-upload-box:hover {
+  border-color: #22c55e;
+  background-color: rgba(34, 197, 94, 0.03);
+}
+
+.reconciliation-upload-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  margin: 10px 0 6px 0;
+}
+
+.reconciliation-upload-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  max-width: 600px;
+  margin: 0 auto 16px auto;
+  line-height: 1.5;
+}
+
+.badge-status-match {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge-status-powder {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge-status-split {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.badge-status-reverse {
+  background-color: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.badge-status-deficit {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-status-excess {
+  background-color: rgba(249, 115, 22, 0.15);
+  color: #fb923c;
+  border: 1px solid rgba(249, 115, 22, 0.3);
+}
+
+.correction-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  align-items: flex-end;
+  margin-top: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #cbd5e1;
+}
+
+.sub-tools-card {
+  margin-top: 24px;
+}
+
+.sub-tool-panel {
+  padding: 18px;
+  border-radius: 10px;
+  background-color: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 16px;
+}
