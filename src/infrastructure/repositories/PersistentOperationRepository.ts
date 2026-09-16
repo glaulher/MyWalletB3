@@ -43,6 +43,16 @@ export class PersistentOperationRepository implements IOperationRepository {
     await this.db.removeOperationsByBatchId(batchId);
   }
 
+  async removeOperation(id: string): Promise<void> {
+    await this.ensureInit();
+    await this.db.removeOperation(id);
+  }
+
+  async removeOperations(ids: string[]): Promise<void> {
+    await this.ensureInit();
+    await this.db.removeOperations(ids);
+  }
+
   async getBatches(): Promise<ImportBatch[]> {
     await this.ensureInit();
     return this.db.getBatches();

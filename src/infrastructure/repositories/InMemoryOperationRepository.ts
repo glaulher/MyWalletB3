@@ -27,6 +27,15 @@ export class InMemoryOperationRepository implements IOperationRepository {
     this.operations = this.operations.filter((op) => op.batchId !== batchId);
   }
 
+  async removeOperation(id: string): Promise<void> {
+    this.operations = this.operations.filter((op) => op.id !== id);
+  }
+
+  async removeOperations(ids: string[]): Promise<void> {
+    const idSet = new Set(ids);
+    this.operations = this.operations.filter((op) => !idSet.has(op.id));
+  }
+
   async getBatches(): Promise<ImportBatch[]> {
     return [...this.batches].sort((a, b) => b.importedAt.getTime() - a.importedAt.getTime());
   }

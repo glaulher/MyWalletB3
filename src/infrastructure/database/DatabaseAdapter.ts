@@ -10,6 +10,8 @@ export interface IDatabaseAdapter {
   saveOperations(operations: Operation[]): Promise<void>;
   getOperations(): Promise<Operation[]>;
   removeOperationsByBatchId(batchId: string): Promise<void>;
+  removeOperation(id: string): Promise<void>;
+  removeOperations(ids: string[]): Promise<void>;
   saveBatch(batch: ImportBatch): Promise<void>;
   getBatches(): Promise<ImportBatch[]>;
   removeBatch(batchId: string): Promise<void>;
@@ -411,6 +413,32 @@ export class AppDatabase implements IDatabaseAdapter {
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
       });
+    }
+  }
+
+  async removeOperation(id: string): Promise<void> {
+    if (this.isTauri && this.tauriDb) {
+      const db = this.tauriDb as {
+        execute: (sql: string, bindParams?: unknown[]) => Promise<unknown>;
+      };
+      await db.execute('DELETE FROM operations WHERE id = $1', [id]);
+      return;
+    }
+
+    if (this.idb) {
+      return new Promise((resolve, reject) => {
+        const tx = this.idb!.transaction('operations', 'readwrite');
+        const store = tx.objectStore('operations');
+        store.delete(id);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+  }
+
+  async removeOperations(ids: string[]): Promise<void> {
+    for (const id of ids) {
+      await this.removeOperation(id);
     }
   }
 

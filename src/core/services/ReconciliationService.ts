@@ -33,6 +33,18 @@ export interface ReconciliationItem {
   googleSearchQuery?: string;
 }
 
+export interface CorrectionRecord {
+  id: string;
+  batchId?: string;
+  operationIds: string[];
+  ticker: string;
+  type: 'conversion' | 'worthless' | 'split' | 'reverse_split' | 'adjustment' | 'batch_reconcile';
+  title: string;
+  description: string;
+  date: Date;
+  operationCount: number;
+}
+
 export const KNOWN_B3_CONVERSIONS: Record<string, { targetTicker: string; reason: string }> = {
   IRDM11: {
     targetTicker: 'IRIM11',
@@ -355,16 +367,20 @@ export class ReconciliationService {
     ticker: string,
     quantity: number,
     date: Date = new Date(),
+    batchId?: string,
   ): Operation {
+    const cleanTicker = ticker.toUpperCase().trim();
+    const effectiveBatchId = batchId || `corr_exp_${cleanTicker}_${Date.now()}`;
     return new Operation(
       `exp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       date,
-      ticker.toUpperCase().trim(),
+      cleanTicker,
       'sell',
       quantity,
       0,
       0,
       'Expiração (Virou Pó)',
+      effectiveBatchId,
     );
   }
 
@@ -377,17 +393,21 @@ export class ReconciliationService {
     currentQty: number,
     splitMultiplier: number,
     date: Date = new Date(),
+    batchId?: string,
   ): Operation {
+    const cleanTicker = ticker.toUpperCase().trim();
     const additionalQty = currentQty * splitMultiplier - currentQty;
+    const effectiveBatchId = batchId || `corr_split_${cleanTicker}_${Date.now()}`;
     return new Operation(
       `split_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       date,
-      ticker.toUpperCase().trim(),
+      cleanTicker,
       'buy',
       additionalQty,
       0,
       0,
       `Desdobramento (Split 1:${splitMultiplier})`,
+      effectiveBatchId,
     );
   }
 
@@ -401,16 +421,20 @@ export class ReconciliationService {
     unitPrice: number = 0,
     institution: string = 'Ajuste / Subscrição',
     date: Date = new Date(),
+    batchId?: string,
   ): Operation {
+    const cleanTicker = ticker.toUpperCase().trim();
+    const effectiveBatchId = batchId || `corr_adj_${cleanTicker}_${Date.now()}`;
     return new Operation(
       `adj_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       date,
-      ticker.toUpperCase().trim(),
+      cleanTicker,
       type,
       quantity,
       unitPrice,
       0,
       institution,
+      effectiveBatchId,
     );
   }
 
@@ -427,34 +451,233 @@ export class ReconciliationService {
     newQuantity: number,
     date: Date = new Date(),
     cashReceived = 0,
+    batchId?: string,
   ): [Operation, Operation] {
+    const cleanOld = oldTicker.toUpperCase().trim();
+    const cleanNew = newTicker.toUpperCase().trim();
     const totalCost = oldQuantity * oldAveragePrice;
     const netCost = Math.max(0, totalCost - cashReceived);
     const newUnitPrice = newQuantity > 0 ? netCost / newQuantity : 0;
+    const effectiveBatchId = batchId || `corr_conv_${cleanOld}_${cleanNew}_${Date.now()}`;
 
     const sellOp = new Operation(
       `conv-sell-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       date,
-      oldTicker.toUpperCase().trim(),
+      cleanOld,
       'sell',
       oldQuantity,
       oldAveragePrice,
       0,
-      `Incorporação / Conversão (${newTicker.toUpperCase().trim()})`,
+      `Incorporação / Conversão (${cleanNew})`,
+      effectiveBatchId,
     );
 
     const buyOp = new Operation(
       `conv-buy-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       date,
-      newTicker.toUpperCase().trim(),
+      cleanNew,
       'buy',
       newQuantity,
       newUnitPrice,
       0,
-      `Incorporação / Conversão (${oldTicker.toUpperCase().trim()})`,
+      `Incorporação / Conversão (${cleanOld})`,
+      effectiveBatchId,
     );
 
     return [sellOp, buyOp];
+  }
+
+  /**
+   * Scans operations repository and identifies all applied corrections for rollback/undo.
+   * Groups paired conversions, splits, worthlessness and adjustments from newest to oldest.
+   */
+  findCorrections(operations: Operation[]): CorrectionRecord[] {
+    const records: CorrectionRecord[] = [];
+    const processedOpIds = new Set<string>();
+
+    // 1. Group operations by batchId if batchId starts with 'corr_'
+    const corrBatchMap = new Map<string, Operation[]>();
+    for (const op of operations) {
+      if (op.batchId && op.batchId.startsWith('corr_')) {
+        const list = corrBatchMap.get(op.batchId) || [];
+        list.push(op);
+        corrBatchMap.set(op.batchId, list);
+        processedOpIds.add(op.id);
+      }
+    }
+
+    for (const [batchId, ops] of corrBatchMap.entries()) {
+      if (ops.length === 0) continue;
+      const firstOp = ops[0];
+
+      if (batchId.startsWith('corr_conv_')) {
+        const sell = ops.find((o) => o.type === 'sell') || firstOp;
+        const buy = ops.find((o) => o.type === 'buy') || firstOp;
+        records.push({
+          id: batchId,
+          batchId,
+          operationIds: ops.map((o) => o.id),
+          ticker: `${sell.asset} ➔ ${buy.asset}`,
+          type: 'conversion',
+          title: `Incorporação / Conversão: ${sell.asset} ➔ ${buy.asset}`,
+          description: `Baixa de ${sell.quantity} cotas de ${sell.asset} e entrada de ${buy.quantity} cotas de ${buy.asset} (PM R$ ${buy.unitPrice.toFixed(2)})`,
+          date: firstOp.date,
+          operationCount: ops.length,
+        });
+      } else if (batchId.startsWith('corr_exp_')) {
+        records.push({
+          id: batchId,
+          batchId,
+          operationIds: ops.map((o) => o.id),
+          ticker: firstOp.asset,
+          type: 'worthless',
+          title: `Opção Virou Pó: ${firstOp.asset}`,
+          description: `Baixa por expiração de ${firstOp.quantity} un a R$ 0,00`,
+          date: firstOp.date,
+          operationCount: ops.length,
+        });
+      } else if (batchId.startsWith('corr_split_')) {
+        records.push({
+          id: batchId,
+          batchId,
+          operationIds: ops.map((o) => o.id),
+          ticker: firstOp.asset,
+          type: 'split',
+          title: `Desdobramento (Split): ${firstOp.asset}`,
+          description: `Acréscimo de ${firstOp.quantity} cotas a R$ 0,00`,
+          date: firstOp.date,
+          operationCount: ops.length,
+        });
+      } else {
+        records.push({
+          id: batchId,
+          batchId,
+          operationIds: ops.map((o) => o.id),
+          ticker: firstOp.asset,
+          type: 'adjustment',
+          title: `${firstOp.institution || 'Ajuste B3'}: ${firstOp.asset}`,
+          description: `${firstOp.type === 'buy' ? 'Entrada' : 'Saída'} de ${firstOp.quantity} cotas (${firstOp.institution || 'Ajuste'})`,
+          date: firstOp.date,
+          operationCount: ops.length,
+        });
+      }
+    }
+
+    // 2. Identify legacy correction operations without corr_ batchId
+    const legacyConvSells = operations.filter(
+      (o) => !processedOpIds.has(o.id) && o.id.startsWith('conv-sell-'),
+    );
+    const legacyConvBuys = operations.filter(
+      (o) => !processedOpIds.has(o.id) && o.id.startsWith('conv-buy-'),
+    );
+
+    for (const sell of legacyConvSells) {
+      processedOpIds.add(sell.id);
+      const sellTs = sell.id.split('-')[2];
+      const matchBuy = legacyConvBuys.find(
+        (b) => !processedOpIds.has(b.id) && sellTs && b.id.includes(sellTs),
+      );
+      const buy = matchBuy || legacyConvBuys.find((b) => !processedOpIds.has(b.id));
+      if (buy) {
+        processedOpIds.add(buy.id);
+        records.push({
+          id: sell.id,
+          operationIds: [sell.id, buy.id],
+          ticker: `${sell.asset} ➔ ${buy.asset}`,
+          type: 'conversion',
+          title: `Incorporação / Conversão: ${sell.asset} ➔ ${buy.asset}`,
+          description: `Baixa de ${sell.quantity} cotas de ${sell.asset} e entrada de ${buy.quantity} cotas de ${buy.asset}`,
+          date: sell.date,
+          operationCount: 2,
+        });
+      } else {
+        records.push({
+          id: sell.id,
+          operationIds: [sell.id],
+          ticker: sell.asset,
+          type: 'conversion',
+          title: `Conversão (Venda): ${sell.asset}`,
+          description: `Baixa de ${sell.quantity} cotas`,
+          date: sell.date,
+          operationCount: 1,
+        });
+      }
+    }
+
+    for (const buy of legacyConvBuys) {
+      if (processedOpIds.has(buy.id)) continue;
+      processedOpIds.add(buy.id);
+      records.push({
+        id: buy.id,
+        operationIds: [buy.id],
+        ticker: buy.asset,
+        type: 'conversion',
+        title: `Conversão (Entrada): ${buy.asset}`,
+        description: `Entrada de ${buy.quantity} cotas`,
+        date: buy.date,
+        operationCount: 1,
+      });
+    }
+
+    // Legacy exp_, split_, adj_
+    for (const op of operations) {
+      if (processedOpIds.has(op.id)) continue;
+      const isExp = op.id.startsWith('exp_') || op.institution?.includes('Virou Pó');
+      const isSplit = op.id.startsWith('split_') || op.institution?.includes('Desdobramento');
+      const isAdj =
+        op.id.startsWith('adj_') ||
+        op.institution?.includes('Conciliação') ||
+        op.institution?.includes('Grupamento') ||
+        op.institution?.includes('Subscrição') ||
+        op.institution?.includes('Bonificação');
+
+      if (isExp) {
+        processedOpIds.add(op.id);
+        records.push({
+          id: op.id,
+          operationIds: [op.id],
+          ticker: op.asset,
+          type: 'worthless',
+          title: `Opção Virou Pó: ${op.asset}`,
+          description: `Baixa por expiração de ${op.quantity} un a R$ 0,00`,
+          date: op.date,
+          operationCount: 1,
+        });
+      } else if (isSplit) {
+        processedOpIds.add(op.id);
+        records.push({
+          id: op.id,
+          operationIds: [op.id],
+          ticker: op.asset,
+          type: 'split',
+          title: `Desdobramento (Split): ${op.asset}`,
+          description: `Acréscimo de ${op.quantity} cotas a R$ 0,00`,
+          date: op.date,
+          operationCount: 1,
+        });
+      } else if (isAdj) {
+        processedOpIds.add(op.id);
+        records.push({
+          id: op.id,
+          operationIds: [op.id],
+          ticker: op.asset,
+          type: 'adjustment',
+          title: `${op.institution || 'Ajuste B3'}: ${op.asset}`,
+          description: `${op.type === 'buy' ? 'Entrada' : 'Saída'} de ${op.quantity} cotas (${op.institution || 'Ajuste'})`,
+          date: op.date,
+          operationCount: 1,
+        });
+      }
+    }
+
+    // Sort by id timestamp (extracting digits) or date descending
+    return records.sort((a, b) => {
+      const getTs = (rec: CorrectionRecord) => {
+        const match = rec.id.match(/\d{10,}/);
+        return match ? parseInt(match[0], 10) : rec.date.getTime();
+      };
+      return getTs(b) - getTs(a);
+    });
   }
 
   /**

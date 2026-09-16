@@ -5,6 +5,7 @@ import { B3PositionParser, B3PositionItem } from '../../core/services/B3Position
 import {
   ReconciliationService,
   ReconciliationItem,
+  CorrectionRecord,
 } from '../../core/services/ReconciliationService.ts';
 import { Badge } from '../components/Badge.ts';
 import { KpiCard } from '../components/KpiCard.ts';
@@ -51,6 +52,8 @@ export class CorrectionsView {
 
     const rawOps = await this.operationRepo.getAll();
     const positions = this.calculator.calculate(rawOps);
+    const appliedCorrections = this.reconciliationService.findCorrections(rawOps);
+    const lastCorrection = appliedCorrections.length > 0 ? appliedCorrections[0] : null;
 
     if (this.b3Items) {
       this.reconciliationResults = this.reconciliationService.reconcile(
@@ -115,11 +118,18 @@ export class CorrectionsView {
 
     this.container.innerHTML = `
       <div class="view-content">
-        <div class="view-header">
+        <div class="view-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
           <div>
             <h2 class="view-title">${Icons.shieldCheck(22)} Correções, Eventos e Conciliação B3</h2>
             <p class="view-subtitle">Concilie sua custódia com a planilha oficial de Posição da B3, dê baixa em opções que viraram pó e lance desdobramentos, grupamentos e subscrições.</p>
           </div>
+          ${
+            lastCorrection
+              ? `<button type="button" class="btn btn-secondary" id="btn-rollback-last-header" style="display: inline-flex; align-items: center; gap: 6px;" title="Desfazer a última correção realizada (${lastCorrection.title})">
+                  ${Icons.undo(16)} Desfazer Última Correção (${lastCorrection.ticker})
+                </button>`
+              : ''
+          }
         </div>
 
         ${
@@ -616,13 +626,108 @@ export class CorrectionsView {
             </div>
           </div>
         </div>
+
+        <!-- Seção 3: Histórico de Correções e Ponto de Restauração (Rollback) -->
+        ${
+          appliedCorrections.length > 0
+            ? `
+        <div class="card" style="margin-top: 24px;">
+          <div class="card-header-flex">
+            <div>
+              <h3 class="card-title" style="display: flex; align-items: center; gap: 8px;">
+                ${Icons.undo(18, 'text-warning')} Histórico de Correções e Restauração (Rollback)
+              </h3>
+              <p class="card-subtitle">
+                Total de ${appliedCorrections.length} correção(ões) registradas. Desfaça qualquer correção individualmente para restaurar a custódia original.
+              </p>
+            </div>
+            ${
+              lastCorrection
+                ? `<button type="button" class="btn btn-secondary" id="btn-rollback-last-card" style="display: inline-flex; align-items: center; gap: 6px;">
+                    ${Icons.undo(14)} Desfazer Última (${lastCorrection.ticker})
+                  </button>`
+                : ''
+            }
+          </div>
+
+          <div class="table-responsive" style="margin-top: 14px;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Tipo</th>
+                  <th>Ativo</th>
+                  <th>Descrição & Detalhes</th>
+                  <th class="text-right">Ação</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${appliedCorrections
+                  .map((corr) => {
+                    let typeBadge = 'badge-status-match';
+                    let typeIcon = Icons.check(12);
+                    let typeLabel = 'Ajuste B3';
+
+                    if (corr.type === 'conversion') {
+                      typeBadge = 'badge-status-split';
+                      typeIcon = Icons.refresh(12);
+                      typeLabel = 'Incorporação / Conversão';
+                    } else if (corr.type === 'worthless') {
+                      typeBadge = 'badge-status-powder';
+                      typeIcon = Icons.target(12);
+                      typeLabel = 'Opção Virou Pó';
+                    } else if (corr.type === 'split') {
+                      typeBadge = 'badge-status-split';
+                      typeIcon = Icons.zap(12);
+                      typeLabel = 'Desdobramento';
+                    } else if (corr.type === 'reverse_split') {
+                      typeBadge = 'badge-status-reverse';
+                      typeIcon = Icons.gitMerge(12);
+                      typeLabel = 'Grupamento';
+                    }
+
+                    const dateStr = corr.date ? corr.date.toLocaleDateString('pt-BR') : '-';
+
+                    return `
+                      <tr>
+                        <td class="font-mono text-muted" style="white-space: nowrap;">${dateStr}</td>
+                        <td>
+                          <span class="badge ${typeBadge}" style="display: inline-flex; align-items: center; gap: 4px;">
+                            ${typeIcon}
+                            <span>${typeLabel}</span>
+                          </span>
+                        </td>
+                        <td><span class="font-bold font-mono">${corr.ticker}</span></td>
+                        <td>
+                          <div style="font-weight: 500;">${corr.title}</div>
+                          <div class="text-muted" style="font-size: 11px; margin-top: 2px;">${corr.description}</div>
+                        </td>
+                        <td class="text-right" style="white-space: nowrap;">
+                          <button type="button" class="btn btn-small btn-secondary btn-rollback-single" data-id="${corr.id}" style="display: inline-flex; align-items: center; gap: 4px; color: #f87171; border-color: rgba(239, 68, 68, 0.3);" title="Desfazer esta correção e restaurar a custódia anterior">
+                            ${Icons.undo(12)} Desfazer (Rollback)
+                          </button>
+                        </td>
+                      </tr>
+                    `;
+                  })
+                  .join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        `
+            : ''
+        }
       </div>
     `;
 
-    this.bindEvents(positions);
+    this.bindEvents(positions, appliedCorrections);
   }
 
-  private bindEvents(positions: ReturnType<AveragePriceCalculator['calculate']>): void {
+  private bindEvents(
+    positions: ReturnType<AveragePriceCalculator['calculate']>,
+    appliedCorrections: CorrectionRecord[],
+  ): void {
     const fileInput = this.container.querySelector('#posicao-file-input') as HTMLInputElement;
     const btnTriggerUpload = this.container.querySelector('#btn-trigger-upload');
 
@@ -985,6 +1090,46 @@ export class CorrectionsView {
       if (this.onDataChanged) await this.onDataChanged();
       await this.render();
     });
+
+    // Action: Rollback Last Correction (Header or Card)
+    const handleRollbackLast = async () => {
+      if (appliedCorrections.length === 0) return;
+      const target = appliedCorrections[0];
+      if (
+        confirm(
+          `Deseja desfazer a última correção realizada (${target.title})? A custódia original de ${target.ticker} será restaurada.`,
+        )
+      ) {
+        await this.rollbackCorrection(target);
+      }
+    };
+
+    const btnRollbackHeader = this.container.querySelector('#btn-rollback-last-header');
+    btnRollbackHeader?.addEventListener('click', handleRollbackLast);
+
+    const btnRollbackCard = this.container.querySelector('#btn-rollback-last-card');
+    btnRollbackCard?.addEventListener('click', handleRollbackLast);
+
+    // Action: Rollback Single Correction from History Table
+    const singleRollbackButtons =
+      this.container.querySelectorAll<HTMLButtonElement>('.btn-rollback-single');
+    singleRollbackButtons.forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const target = appliedCorrections.find((c) => c.id === id);
+        if (!target) return;
+
+        if (
+          confirm(
+            `Deseja desfazer a correção: "${target.title}"? A custódia original de ${target.ticker} será restaurada.`,
+          )
+        ) {
+          btn.disabled = true;
+          btn.innerHTML = `${Icons.refresh(12)} Desfazendo...`;
+          await this.rollbackCorrection(target);
+        }
+      });
+    });
   }
 
   private async applySingleReconciliation(
@@ -1057,5 +1202,21 @@ export class CorrectionsView {
       if (this.onDataChanged) await this.onDataChanged();
       await this.render();
     }
+  }
+
+  private async rollbackCorrection(correction: CorrectionRecord): Promise<void> {
+    if (correction.batchId) {
+      await this.operationRepo.removeByBatchId(correction.batchId);
+    } else {
+      await this.operationRepo.removeOperations(correction.operationIds);
+    }
+
+    this.statusMessage = {
+      text: `Correção "${correction.title}" desfeita com sucesso! A custódia original de ${correction.ticker} foi restaurada.`,
+      type: 'info',
+    };
+
+    if (this.onDataChanged) await this.onDataChanged();
+    await this.render();
   }
 }

@@ -277,4 +277,96 @@ describe('B3PositionParser & ReconciliationService', () => {
       'IRDM11 IRIM11 fato relevante conversao incorporacao b3',
     );
   });
+
+  it('should find, group and list applied corrections for rollback/undo', () => {
+    const [sellOp, buyOp] = service.createConversionOperations(
+      'IRDM11',
+      12,
+      80.0,
+      'IRIM11',
+      12,
+      new Date('2025-11-01T12:00:00'),
+    );
+    const expOp = service.createWorthlessOptionOperation(
+      'PETRL300',
+      100,
+      new Date('2025-12-19T12:00:00'),
+    );
+    const splitOp = service.createSplitOperation('WEGE3', 10, 2, new Date('2025-10-01T12:00:00'));
+
+    const allOps = [
+      new Operation('norm_1', new Date(), 'VALE3', 'buy', 100, 60), // Normal trade
+      sellOp,
+      buyOp,
+      expOp,
+      splitOp,
+    ];
+
+    const corrections = service.findCorrections(allOps);
+
+    // Normal trade is ignored; only the 3 corrections are returned
+    expect(corrections.length).toBe(3);
+
+    const conv = corrections.find((c) => c.type === 'conversion');
+    expect(conv).toBeDefined();
+    expect(conv?.operationIds.length).toBe(2);
+    expect(conv?.operationIds).toContain(sellOp.id);
+    expect(conv?.operationIds).toContain(buyOp.id);
+    expect(conv?.batchId).toBeDefined();
+
+    const exp = corrections.find((c) => c.type === 'worthless');
+    expect(exp).toBeDefined();
+    expect(exp?.ticker).toBe('PETRL300');
+    expect(exp?.operationIds).toEqual([expOp.id]);
+
+    const split = corrections.find((c) => c.type === 'split');
+    expect(split).toBeDefined();
+    expect(split?.ticker).toBe('WEGE3');
+    expect(split?.operationIds).toEqual([splitOp.id]);
+  });
+
+  it('should cleanly rollback a correction and restore previous custody in repository', async () => {
+    const { InMemoryOperationRepository } =
+      await import('../../infrastructure/repositories/InMemoryOperationRepository.ts');
+    const { AveragePriceCalculator } =
+      await import('../../core/services/AveragePriceCalculator.ts');
+    const calc = new AveragePriceCalculator();
+    const repo = new InMemoryOperationRepository();
+
+    // 1. Initial custody: 12 IRDM11 at R$ 80
+    await repo.add(new Operation('op_1', new Date('2024-01-10T12:00:00'), 'IRDM11', 'buy', 12, 80));
+    let positions = calc.calculate(await repo.getAll());
+    expect(positions.find((p) => p.ticker === 'IRDM11')?.quantity).toBe(12);
+
+    // 2. Apply conversion IRDM11 -> IRIM11
+    const [sellOp, buyOp] = service.createConversionOperations(
+      'IRDM11',
+      12,
+      80,
+      'IRIM11',
+      12,
+      new Date('2025-11-01T12:00:00'),
+    );
+    await repo.addAll([sellOp, buyOp]);
+
+    positions = calc.calculate(await repo.getAll());
+    expect(positions.find((p) => p.ticker === 'IRDM11')).toBeUndefined();
+    expect(positions.find((p) => p.ticker === 'IRIM11')?.quantity).toBe(12);
+
+    // 3. Rollback the conversion
+    const corrections = service.findCorrections(await repo.getAll());
+    expect(corrections.length).toBe(1);
+    const targetCorr = corrections[0];
+    if (targetCorr.batchId) {
+      await repo.removeByBatchId(targetCorr.batchId);
+    } else {
+      await repo.removeOperations(targetCorr.operationIds);
+    }
+
+    // 4. Custody restored: IRDM11 has 12 again, IRIM11 has 0!
+    positions = calc.calculate(await repo.getAll());
+    expect(positions.find((p) => p.ticker === 'IRDM11')?.quantity).toBe(12);
+    expect(positions.find((p) => p.ticker === 'IRIM11')).toBeUndefined();
+    expect(service.findCorrections(await repo.getAll()).length).toBe(0);
+  });
 });
