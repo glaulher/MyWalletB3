@@ -143,7 +143,7 @@ export class DashboardView {
       }
       case 'corrections': {
         const correctionsView = new CorrectionsView(contentArea, async () => {
-          await this.render();
+          await this.controller.load();
         });
         await correctionsView.render();
         break;

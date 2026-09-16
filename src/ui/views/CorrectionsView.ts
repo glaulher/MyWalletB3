@@ -13,6 +13,9 @@ import { Banner } from '../components/Banner.ts';
 import { Icons } from '../components/Icons.ts';
 
 export class CorrectionsView {
+  private static cachedB3Items: B3PositionItem[] | null = null;
+  private static cachedFileName: string | null = null;
+
   private container: HTMLElement;
   private operationRepo: IOperationRepository;
   private onDataChanged?: () => Promise<void>;
@@ -35,9 +38,16 @@ export class CorrectionsView {
     this.container = container;
     this.onDataChanged = onDataChanged;
     this.operationRepo = operationRepo;
+    if (CorrectionsView.cachedB3Items) {
+      this.b3Items = CorrectionsView.cachedB3Items;
+    }
   }
 
   async render(): Promise<void> {
+    if (!this.b3Items && CorrectionsView.cachedB3Items) {
+      this.b3Items = CorrectionsView.cachedB3Items;
+    }
+
     const rawOps = await this.operationRepo.getAll();
     const positions = this.calculator.calculate(rawOps);
 
@@ -129,18 +139,34 @@ export class CorrectionsView {
 
           <div class="reconciliation-upload-box">
             <div class="svg-icon" style="color: #22c55e; margin-bottom: 8px;">${Icons.fileSpreadsheet(32)}</div>
-            <h4 class="reconciliation-upload-title">${this.reconciliationResults ? 'Substituir ou Atualizar Arquivo de Posição' : 'Envie seu arquivo de Posição da B3'}</h4>
+            <h4 class="reconciliation-upload-title">${this.b3Items ? 'Planilha de Posição B3 Carregada' : 'Envie seu arquivo de Posição da B3'}</h4>
             <p class="reconciliation-upload-desc">
-              Baixe a planilha <strong>Posição</strong> no Portal da B3 (menu <em>Extratos &gt; Posição &gt; Exportar Excel</em>). O sistema identificará automaticamente opções que viraram pó, desdobramentos (splits), grupamentos e sobras de subscrição.
+              ${
+                this.b3Items
+                  ? `Arquivo <strong>${CorrectionsView.cachedFileName || 'posicao-*.xlsx'}</strong> ativo (${this.b3Items.length} ativos oficiais da B3). Conforme você corrige cada item abaixo, a lista é atualizada linha a linha.`
+                  : `Baixe a planilha <strong>Posição</strong> no Portal da B3 (menu <em>Extratos &gt; Posição &gt; Exportar Excel</em>). O sistema identificará automaticamente opções que viraram pó, desdobramentos (splits), grupamentos e sobras de subscrição.`
+              }
             </p>
-            ${Button.generateHtml({
-              id: 'btn-trigger-upload',
-              label: this.reconciliationResults
-                ? 'Selecionar Outra Planilha de Posição'
-                : 'Selecionar Planilha da Posição (posicao-*.xlsx)',
-              icon: Icons.folderOpen(16),
-              variant: 'primary',
-            })}
+            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+              ${Button.generateHtml({
+                id: 'btn-trigger-upload',
+                label: this.b3Items
+                  ? 'Carregar Outra Planilha'
+                  : 'Selecionar Planilha da Posição (posicao-*.xlsx)',
+                icon: Icons.folderOpen(16),
+                variant: this.b3Items ? 'secondary' : 'primary',
+              })}
+              ${
+                this.b3Items
+                  ? Button.generateHtml({
+                      id: 'btn-clear-posicao',
+                      label: 'Limpar Planilha',
+                      icon: Icons.trash(16),
+                      variant: 'danger',
+                    })
+                  : ''
+              }
+            </div>
           </div>
 
           ${
@@ -214,7 +240,15 @@ export class CorrectionsView {
                 <tbody>
                   ${
                     filteredRecon.length === 0
-                      ? `<tr><td colspan="7" class="text-center text-muted" style="padding: 24px;">Nenhum item para este filtro.</td></tr>`
+                      ? `<tr><td colspan="7" class="text-center text-muted" style="padding: 36px 20px;">
+                          <div style="color: #22c55e; margin-bottom: 8px;">${Icons.shieldCheck(32)}</div>
+                          <div class="font-bold" style="color: #fff; font-size: 15px; margin-bottom: 4px;">
+                            ${this.filterStatus === 'diffs' ? 'Todas as divergências foram conciliadas!' : 'Nenhum ativo encontrado para este filtro.'}
+                          </div>
+                          <div style="font-size: 12px; color: var(--text-muted);">
+                            ${this.filterStatus === 'diffs' ? 'Sua custódia calculada bate 100% com o extrato oficial de posição da B3.' : ''}
+                          </div>
+                        </td></tr>`
                       : filteredRecon
                           .map((r) => {
                             let badgeClass = 'badge-status-match';
@@ -516,6 +550,8 @@ export class CorrectionsView {
         const buffer = await file.arrayBuffer();
         try {
           this.b3Items = this.positionParser.parse(buffer);
+          CorrectionsView.cachedB3Items = this.b3Items;
+          CorrectionsView.cachedFileName = file.name;
           this.statusMessage = {
             text: `Planilha "${file.name}" carregada com sucesso! ${this.b3Items.length} ativos oficiais analisados da B3.`,
             type: 'success',
@@ -525,6 +561,19 @@ export class CorrectionsView {
           alert('Erro ao ler planilha de posição: ' + (err as Error).message);
         }
       }
+    });
+
+    const btnClearPosicao = this.container.querySelector('#btn-clear-posicao');
+    btnClearPosicao?.addEventListener('click', async () => {
+      this.b3Items = null;
+      CorrectionsView.cachedB3Items = null;
+      CorrectionsView.cachedFileName = null;
+      this.reconciliationResults = null;
+      this.statusMessage = {
+        text: 'Planilha de posição removida da sessão.',
+        type: 'info',
+      };
+      await this.render();
     });
 
     // Filter status buttons
@@ -565,6 +614,9 @@ export class CorrectionsView {
 
         const item = this.reconciliationResults.find((r) => r.ticker === ticker);
         if (!item) return;
+
+        btn.disabled = true;
+        btn.innerHTML = `${Icons.refresh(13)} Conciliando...`;
 
         await this.applySingleReconciliation(item, positions);
       });
