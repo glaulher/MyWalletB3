@@ -13,17 +13,18 @@ export class ColumnChart {
     items: ColumnChartItem[],
     width = 560,
     height = 280,
-    minSlotWidth = 64,
+    minSlotWidth = 72,
   ): string {
     if (!items || items.length === 0 || items.every((item) => item.value <= 0)) {
       return `<div class="chart-empty">Nenhum dado para exibir no gráfico</div>`;
     }
 
-    const padding = { top: 32, right: 32, bottom: 48, left: 64 };
+    const padding = { top: 36, right: 36, bottom: 52, left: 68 };
     const barCount = items.length;
 
     // Calculate dynamic total width to ensure every bar has enough room for labels without collision
     const neededWidth = padding.left + padding.right + barCount * minSlotWidth;
+    const isScrollable = neededWidth > width;
     const actualWidth = Math.max(width, neededWidth);
     const chartWidth = actualWidth - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
@@ -51,7 +52,7 @@ export class ColumnChart {
 
     // Draw Columns
     const slotWidth = chartWidth / barCount;
-    const barWidth = Math.min(44, Math.max(18, slotWidth * 0.55));
+    const barWidth = Math.min(46, Math.max(22, slotWidth * 0.55));
 
     items.forEach((item, idx) => {
       const barHeight = (item.value / yAxisMax) * chartHeight;
@@ -70,18 +71,18 @@ export class ColumnChart {
           ${
             barHeight > 18
               ? `<text x="${x + barWidth / 2}" y="${y - 6}" text-anchor="middle" fill="#e2e8f0"
-                       font-size="10px" font-weight="bold" font-family="ui-monospace, monospace">
+                       font-size="11px" font-weight="bold" font-family="ui-monospace, monospace">
                   R$ ${Math.round(item.value).toLocaleString('pt-BR')}
                 </text>`
               : ''
           }
-          <text x="${x + barWidth / 2}" y="${padding.top + chartHeight + 18}" text-anchor="middle"
-                fill="#f1f5f9" font-size="11px" font-weight="600" font-family="ui-monospace, monospace">
+          <text x="${x + barWidth / 2}" y="${padding.top + chartHeight + 20}" text-anchor="middle"
+                fill="#f1f5f9" font-size="12px" font-weight="600" font-family="ui-monospace, monospace">
             ${item.label}
           </text>
           ${
             item.percentage !== undefined
-              ? `<text x="${x + barWidth / 2}" y="${padding.top + chartHeight + 32}" text-anchor="middle"
+              ? `<text x="${x + barWidth / 2}" y="${padding.top + chartHeight + 36}" text-anchor="middle"
                        fill="#94a3b8" font-size="10px">
                   ${item.percentage.toFixed(1)}%
                 </text>`
@@ -91,8 +92,12 @@ export class ColumnChart {
       `;
     });
 
+    const svgStyle = isScrollable
+      ? `width: ${actualWidth}px; min-width: ${actualWidth}px; height: ${height}px; min-height: ${height}px; display: block; flex-shrink: 0;`
+      : `width: 100%; min-width: 100%; height: ${height}px; min-height: ${height}px; display: block;`;
+
     return `
-      <svg width="${actualWidth}" height="${height}" viewBox="0 0 ${actualWidth} ${height}" class="column-chart-svg" style="min-width: 100%; display: block;">
+      <svg width="${actualWidth}" height="${height}" viewBox="0 0 ${actualWidth} ${height}" class="column-chart-svg" style="${svgStyle}">
         ${elements}
       </svg>
     `;
@@ -105,11 +110,24 @@ export class ColumnChart {
     items: ColumnChartItem[],
     width = 560,
     height = 280,
-    minSlotWidth = 64,
+    minSlotWidth = 72,
   ): HTMLElement {
     const container = document.createElement('div');
     container.className = 'column-chart-container';
     container.innerHTML = this.generateSvg(items, width, height, minSlotWidth);
+
+    // Mouse wheel horizontal scroll support
+    container.addEventListener(
+      'wheel',
+      (e) => {
+        if (e.deltaY !== 0 && container.scrollWidth > container.clientWidth) {
+          e.preventDefault();
+          container.scrollLeft += e.deltaY;
+        }
+      },
+      { passive: false },
+    );
+
     return container;
   }
 }

@@ -26,7 +26,7 @@ describe('ColumnChart', () => {
   });
 
   it('should dynamically expand width to support horizontal scroll when there are many items', () => {
-    // 20 items * 68 minSlotWidth = 1360 + padding = 1456 > 560
+    // 20 items * 68 minSlotWidth = 1360 + padding (68 + 36 = 104) = 1464 > 560
     const manyItems: ColumnChartItem[] = Array.from({ length: 20 }, (_, idx) => ({
       label: `ASSET${idx + 1}`,
       value: (idx + 1) * 100,
@@ -36,8 +36,8 @@ describe('ColumnChart', () => {
     const svgString = ColumnChart.generateSvg(manyItems, 560, 260, 68);
 
     expect(svgString).toContain('<svg');
-    expect(svgString).toContain('width="1456"');
-    expect(svgString).toContain('viewBox="0 0 1456 260"');
+    expect(svgString).toContain('width="1464"');
+    expect(svgString).toContain('viewBox="0 0 1464 260"');
     expect(svgString).toContain('ASSET1');
     expect(svgString).toContain('ASSET20');
   });
