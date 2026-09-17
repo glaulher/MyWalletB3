@@ -7,19 +7,33 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# Dependencies
+node_modules/
+
+# Production & Build outputs
+dist/
+dist-ssr/
+out/
 
 # Database & local data
 *.db
 *.sqlite
 *.sqlite3
+*.local
 
 # Rust / Tauri build artifacts
 target/
 src-tauri/target/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Vite cache
+.vite/
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
 
 # Editor directories and files
 .vscode/*
@@ -31,4 +45,3 @@ src-tauri/target/
 *.njsproj
 *.sln
 *.sw?
-
