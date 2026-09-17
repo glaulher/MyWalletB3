@@ -1,16 +1,19 @@
 import { BackupService } from '../../core/services/BackupService.ts';
 import { IOperationRepository } from '../../core/repositories/IOperationRepository.ts';
 import { IAssetRepository } from '../../core/repositories/IAssetRepository.ts';
+import { IMovementRepository } from '../../core/repositories/IMovementRepository.ts';
 import { PersistentOperationRepository } from '../../infrastructure/repositories/PersistentOperationRepository.ts';
 import { PersistentAssetRepository } from '../../infrastructure/repositories/PersistentAssetRepository.ts';
 import { Button } from '../components/Button.ts';
 import { Banner } from '../components/Banner.ts';
 import { Icons } from '../components/Icons.ts';
+import { escapeHtml } from '../utils/sanitize.ts';
 
 export class BackupView {
   private container: HTMLElement;
   private backupService: BackupService;
   private operationRepo: IOperationRepository;
+  private movementRepo?: IMovementRepository;
   private onStateChange: () => void;
 
   constructor(
@@ -18,11 +21,13 @@ export class BackupView {
     onStateChange: () => void,
     operationRepo: IOperationRepository = new PersistentOperationRepository(),
     assetRepo: IAssetRepository = new PersistentAssetRepository(),
+    movementRepo?: IMovementRepository,
   ) {
     this.container = container;
     this.onStateChange = onStateChange;
     this.operationRepo = operationRepo;
-    this.backupService = new BackupService(operationRepo, assetRepo);
+    this.movementRepo = movementRepo;
+    this.backupService = new BackupService(operationRepo, assetRepo, movementRepo);
   }
 
   async render(): Promise<void> {
@@ -39,6 +44,7 @@ export class BackupView {
         </div>
 
         <div id="backup-status-banner"></div>
+        <div id="backup-loading-indicator" style="display: none;"></div>
 
         <div class="backup-grid">
           <!-- Card Exportar -->
@@ -125,11 +131,11 @@ export class BackupView {
                     .map(
                       (b) => `
                     <tr>
-                      <td>${b.importedAt.toLocaleString('pt-BR')}</td>
-                      <td class="font-bold">${b.fileName}</td>
-                      <td class="text-right">${b.operationCount}</td>
+                      <td>${escapeHtml(b.importedAt.toLocaleString('pt-BR'))}</td>
+                      <td class="font-bold">${escapeHtml(b.fileName)}</td>
+                      <td class="text-right">${escapeHtml(b.operationCount)}</td>
                       <td class="text-right">
-                        <button class="btn btn-danger btn-small btn-remove-batch" data-batch-id="${b.id}" data-file-name="${b.fileName}">
+                        <button class="btn btn-danger btn-small btn-remove-batch" data-batch-id="${escapeHtml(b.id)}" data-file-name="${escapeHtml(b.fileName)}">
                           ${Icons.undo(14)}
                           <span>Desfazer Este Lote</span>
                         </button>
@@ -169,21 +175,69 @@ export class BackupView {
     this.bindEvents();
   }
 
+  private setLoading(isLoading: boolean, title = '', message = ''): void {
+    const loadingEl = this.container.querySelector('#backup-loading-indicator') as HTMLElement;
+    const actionsContainer = this.container.querySelector('.backup-grid') as HTMLElement;
+    if (!loadingEl) return;
+
+    if (isLoading) {
+      loadingEl.style.display = 'block';
+      loadingEl.innerHTML = `
+        <div class="backup-loading-box" style="display: flex; align-items: center; gap: 16px; padding: 18px 24px; background: rgba(30, 41, 59, 0.95); border: 1px solid var(--primary); border-radius: 10px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); margin-bottom: 24px;">
+          <span class="spin-animation" style="color: var(--primary); display: flex; align-items: center; justify-content: center;">
+            ${Icons.refresh(28)}
+          </span>
+          <div>
+            <h4 style="margin: 0; font-size: 15px; font-weight: 600; color: #fff;">${title}</h4>
+            <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-muted);">${message}</p>
+          </div>
+        </div>
+      `;
+      if (actionsContainer) {
+        actionsContainer.style.pointerEvents = 'none';
+        actionsContainer.style.opacity = '0.5';
+      }
+    } else {
+      loadingEl.style.display = 'none';
+      loadingEl.innerHTML = '';
+      if (actionsContainer) {
+        actionsContainer.style.pointerEvents = 'auto';
+        actionsContainer.style.opacity = '1';
+      }
+    }
+  }
+
   private bindEvents(): void {
-    const btnExport = this.container.querySelector('#btn-export-backup');
+    const btnExport = this.container.querySelector(
+      '#btn-export-backup',
+    ) as HTMLButtonElement | null;
     const btnSelect = this.container.querySelector('#btn-select-backup');
     const fileInput = this.container.querySelector('#backup-file-input') as HTMLInputElement;
     const restoreModeSelect = this.container.querySelector('#restore-mode') as HTMLSelectElement;
-    const btnReset = this.container.querySelector('#btn-danger-reset');
+    const btnReset = this.container.querySelector('#btn-danger-reset') as HTMLButtonElement | null;
 
     btnExport?.addEventListener('click', async () => {
       try {
+        btnExport.setAttribute('disabled', 'true');
+        btnExport.innerHTML = `<span class="spin-animation">${Icons.refresh(16)}</span> <span>Exportando Backup...</span>`;
+        this.setLoading(
+          true,
+          'Exportando Banco de Dados...',
+          'Compilando todas as operações, ativos e lotes cadastrados...',
+        );
+        await new Promise((r) => setTimeout(r, 40));
+
         const json = await this.backupService.exportBackup();
         this.backupService.downloadBackupFile(json);
+        this.setLoading(false);
         this.showBanner('Backup exportado e baixado com sucesso!', 'success');
       } catch (err: unknown) {
+        this.setLoading(false);
         const errorMsg = err instanceof Error ? err.message : String(err);
         this.showBanner(`Erro ao exportar backup: ${errorMsg}`, 'error');
+      } finally {
+        btnExport.removeAttribute('disabled');
+        btnExport.innerHTML = `${Icons.download(16)} <span>Baixar Backup Completo (.json)</span>`;
       }
     });
 
@@ -194,9 +248,18 @@ export class BackupView {
       if (target.files && target.files.length > 0) {
         const file = target.files[0];
         try {
+          this.setLoading(
+            true,
+            'Restaurando Banco de Dados...',
+            `Lendo "${file.name}" e gravando operações no banco SQLite...`,
+          );
+          await new Promise((r) => setTimeout(r, 50));
+
           const text = await file.text();
           const mode = (restoreModeSelect?.value as 'overwrite' | 'merge') || 'overwrite';
           const result = await this.backupService.importBackup(text, mode);
+
+          this.setLoading(false);
           this.showBanner(
             `Backup "${file.name}" restaurado com sucesso! (${result.operationsRestored} operações restauradas)`,
             'success',
@@ -204,16 +267,20 @@ export class BackupView {
           await this.render();
           this.onStateChange();
         } catch (err: unknown) {
+          this.setLoading(false);
           const errorMsg = err instanceof Error ? err.message : String(err);
           this.showBanner(`Falha ao restaurar backup: ${errorMsg}`, 'error');
+        } finally {
+          fileInput.value = '';
         }
       }
     });
 
-    this.container.querySelectorAll('.btn-remove-batch').forEach((btn) => {
+    this.container.querySelectorAll('.btn-remove-batch').forEach((btnEl) => {
+      const btn = btnEl as HTMLButtonElement;
       btn.addEventListener('click', async () => {
-        const batchId = (btn as HTMLElement).dataset.batchId;
-        const fileName = (btn as HTMLElement).dataset.fileName;
+        const batchId = btn.dataset.batchId;
+        const fileName = btn.dataset.fileName;
         if (!batchId) return;
 
         if (
@@ -221,7 +288,12 @@ export class BackupView {
             `Deseja realmente remover o lote "${fileName}"? As operações importadas por ele serão desfeitas.`,
           )
         ) {
+          btn.setAttribute('disabled', 'true');
+          btn.innerHTML = `<span class="spin-animation">${Icons.refresh(14)}</span> <span>Desfazendo...</span>`;
           await this.operationRepo.removeBatch(batchId);
+          if (this.movementRepo) {
+            await this.movementRepo.removeBatch(batchId);
+          }
           this.showBanner(`Lote "${fileName}" desfeito com sucesso.`, 'info');
           await this.render();
           this.onStateChange();
@@ -235,7 +307,12 @@ export class BackupView {
           'ATENÇÃO: Você está prestes a apagar todos os dados salvos no banco. Tem certeza absoluta?',
         )
       ) {
+        btnReset.setAttribute('disabled', 'true');
+        btnReset.innerHTML = `<span class="spin-animation">${Icons.refresh(16)}</span> <span>Zerando...</span>`;
         await this.operationRepo.clear();
+        if (this.movementRepo) {
+          await this.movementRepo.removeAll();
+        }
         this.showBanner('Banco de dados zerado com sucesso.', 'info');
         await this.render();
         this.onStateChange();

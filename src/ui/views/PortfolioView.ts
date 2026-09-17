@@ -10,6 +10,7 @@ import {
   MarketQuote,
   PositionMarketResult,
 } from '../../core/services/MarketQuoteService.ts';
+import { escapeHtml } from '../utils/sanitize.ts';
 
 export type PortfolioCategoryKey = 'all' | 'fii' | 'fi-infra' | 'stock' | 'bdr' | 'option';
 
@@ -190,7 +191,7 @@ export class PortfolioView {
           ${KpiCard.generateHtml({
             title: 'Maior Posição',
             icon: Icons.star(18),
-            value: topPosition ? topPosition.ticker : '-',
+            value: escapeHtml(topPosition ? topPosition.ticker : '-'),
             subtext:
               topPosition && summary.totalInvested > 0
                 ? `${((topPosition.totalCost / summary.totalInvested) * 100).toFixed(1)}% da carteira`
@@ -394,7 +395,7 @@ export class PortfolioView {
                             <span class="quote-variation-pill ${pillClass}">
                               ${changeSign}${changePct.toFixed(1)}%
                             </span>
-                            <button type="button" class="btn-icon-subtle btn-manual-quote" data-ticker="${pos.ticker}" data-current="${res.marketPrice}" title="Ajustar cotação manualmente">
+                            <button type="button" class="btn-icon-subtle btn-manual-quote" data-ticker="${escapeHtml(pos.ticker)}" data-current="${res.marketPrice}" title="Ajustar cotação manualmente">
                               ${Icons.edit(12)}
                             </button>
                           </div>
@@ -425,7 +426,7 @@ export class PortfolioView {
                         quoteHtml = `
                           <div class="quote-cell-wrap">
                             <span class="text-muted" style="font-size: 11px;">Sem cotação</span>
-                            <button type="button" class="btn-icon-subtle btn-manual-quote" data-ticker="${pos.ticker}" data-current="${pos.averagePrice}" title="Inserir cotação manual">
+                            <button type="button" class="btn-icon-subtle btn-manual-quote" data-ticker="${escapeHtml(pos.ticker)}" data-current="${pos.averagePrice}" title="Inserir cotação manual">
                               ${Icons.edit(12)}
                             </button>
                           </div>
@@ -434,7 +435,7 @@ export class PortfolioView {
 
                       return `
                         <tr>
-                          <td class="font-bold font-mono">${pos.ticker}</td>
+                          <td class="font-bold font-mono">${escapeHtml(pos.ticker)}</td>
                           <td>${Badge.generateHtml({ label: typeLabel, variant: badgeVariant })}</td>
                           <td class="text-right font-mono">${pos.quantity.toLocaleString('pt-BR')}</td>
                           <td class="text-right font-mono">R$ ${pos.averagePrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>

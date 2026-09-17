@@ -36,12 +36,16 @@ export type IconName =
   | 'info'
   | 'chevronDown'
   | 'chevronRight'
+  | 'chevronLeft'
+  | 'arrowLeft'
+  | 'arrowRight'
   | 'target'
   | 'zap'
   | 'gitMerge'
   | 'plusCircle'
   | 'layers'
-  | 'edit';
+  | 'edit'
+  | 'appLogo';
 
 export class Icons {
   /**
@@ -292,6 +296,26 @@ export class Icons {
     return this.wrap(`<polyline points="9 18 15 12 9 6"/>`, size, className);
   }
 
+  static chevronLeft(size: number = 18, className: string = ''): string {
+    return this.wrap(`<polyline points="15 18 9 12 15 6"/>`, size, className);
+  }
+
+  static arrowLeft(size: number = 18, className: string = ''): string {
+    return this.wrap(
+      `<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>`,
+      size,
+      className,
+    );
+  }
+
+  static arrowRight(size: number = 18, className: string = ''): string {
+    return this.wrap(
+      `<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>`,
+      size,
+      className,
+    );
+  }
+
   static target(size: number = 18, className: string = ''): string {
     return this.wrap(
       `<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>`,
@@ -334,5 +358,54 @@ export class Icons {
       size,
       className,
     );
+  }
+
+  static appLogo(size: number = 32, className: string = ''): string {
+    const cls = `app-logo-icon ${className}`.trim();
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 512 512" class="${cls}">
+      <defs>
+        <linearGradient id="logoBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#0b132b" />
+          <stop offset="50%" stop-color="#0f172a" />
+          <stop offset="100%" stop-color="#030712" />
+        </linearGradient>
+        <linearGradient id="logoNeonRim" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#06b6d4" />
+          <stop offset="50%" stop-color="#10b981" />
+          <stop offset="100%" stop-color="#3b82f6" />
+        </linearGradient>
+        <linearGradient id="logoGold" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#fde047" />
+          <stop offset="50%" stop-color="#eab308" />
+          <stop offset="100%" stop-color="#ca8a04" />
+        </linearGradient>
+        <linearGradient id="logoWallet" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#064e3b" />
+          <stop offset="100%" stop-color="#022c22" />
+        </linearGradient>
+        <linearGradient id="logoArrow" x1="0%" y1="100%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#06b6d4" />
+          <stop offset="100%" stop-color="#34d399" />
+        </linearGradient>
+      </defs>
+      <rect x="24" y="24" width="464" height="464" rx="105" ry="105" fill="url(#logoBgGrad)" />
+      <rect x="24" y="24" width="464" height="464" rx="105" ry="105" fill="none" stroke="url(#logoNeonRim)" stroke-width="12" stroke-opacity="0.9" />
+      <rect x="120" y="156" width="260" height="70" rx="22" fill="#032b21" stroke="url(#logoGold)" stroke-width="6" />
+      <rect x="145" y="140" width="130" height="34" rx="8" fill="url(#logoGold)" />
+      <rect x="110" y="186" width="270" height="200" rx="30" fill="url(#logoGold)" />
+      <rect x="116" y="192" width="258" height="188" rx="25" fill="url(#logoWallet)" />
+      <rect x="156" y="282" width="22" height="72" rx="11" fill="#38bdf8" />
+      <rect x="194" y="248" width="22" height="106" rx="11" fill="#2dd4bf" />
+      <rect x="232" y="214" width="22" height="140" rx="11" fill="#34d399" />
+      <path d="M 330 256 L 396 256 C 414 256 428 270 428 288 C 428 306 414 320 396 320 L 330 320 Z" fill="url(#logoGold)" />
+      <path d="M 330 262 L 392 262 C 406 262 418 274 418 288 C 418 302 406 314 392 314 L 330 314 Z" fill="#047857" />
+      <circle cx="390" cy="288" r="14" fill="url(#logoGold)" />
+      <polyline points="132,324 210,240 262,284 374,136" fill="none" stroke="#06b6d4" stroke-width="26" stroke-linecap="round" stroke-linejoin="round" opacity="0.3" />
+      <polyline points="132,324 210,240 262,284 374,136" fill="none" stroke="url(#logoArrow)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M 330 134 L 388 122 L 376 180 Z" fill="url(#logoArrow)" stroke="#34d399" stroke-width="3" stroke-linejoin="round" />
+      <circle cx="132" cy="324" r="8" fill="#38bdf8" stroke="#ffffff" stroke-width="3" />
+      <circle cx="210" cy="240" r="8" fill="#2dd4bf" stroke="#ffffff" stroke-width="3" />
+      <circle cx="262" cy="284" r="8" fill="#34d399" stroke="#ffffff" stroke-width="3" />
+    </svg>`;
   }
 }

@@ -36,6 +36,12 @@ describe('UI Reusable Components', () => {
 
     const plusCircleSvg = Icons.plusCircle(14);
     expect(plusCircleSvg).toContain('<svg');
+
+    const appLogoSvg = Icons.appLogo(32, 'my-logo');
+    expect(appLogoSvg).toContain('<svg');
+    expect(appLogoSvg).toContain('width="32"');
+    expect(appLogoSvg).toContain('my-logo');
+    expect(appLogoSvg).toContain('app-logo-icon');
   });
 
   it('Button should generate valid HTML with variants and icons', () => {

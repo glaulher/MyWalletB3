@@ -7,6 +7,7 @@ import { PersistentOperationRepository } from '../../infrastructure/repositories
 import { Badge } from '../components/Badge.ts';
 import { KpiCard } from '../components/KpiCard.ts';
 import { Icons } from '../components/Icons.ts';
+import { escapeHtml } from '../utils/sanitize.ts';
 
 export class IncomeReportView {
   private container: HTMLElement;
@@ -124,11 +125,11 @@ export class IncomeReportView {
                       return `
                       <tr>
                         <td>
-                          <div class="font-bold">${item.groupCode} - ${item.itemCode}</div>
-                          <div style="font-size: 11px; color: var(--text-muted);">${item.groupName}</div>
+                          <div class="font-bold">${escapeHtml(item.groupCode)} - ${escapeHtml(item.itemCode)}</div>
+                          <div style="font-size: 11px; color: var(--text-muted);">${escapeHtml(item.groupName)}</div>
                         </td>
                         <td>
-                          <span class="font-bold">${item.ticker}</span>
+                          <span class="font-bold">${escapeHtml(item.ticker)}</span>
                           <div>${Badge.generateHtml({ label: item.assetType.toUpperCase(), variant: badgeVariant })}</div>
                         </td>
                         <td class="text-right">${item.quantity.toLocaleString('pt-BR')}</td>
@@ -136,7 +137,7 @@ export class IncomeReportView {
                         <td class="text-right font-mono">R$ ${item.previousYearCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                         <td class="text-right font-mono font-bold">R$ ${item.currentYearCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                         <td style="max-width: 320px;">
-                          <div style="font-size: 12px; color: #cbd5e1; margin-bottom: 6px; line-height: 1.4;">${item.description}</div>
+                          <div style="font-size: 12px; color: #cbd5e1; margin-bottom: 6px; line-height: 1.4;">${escapeHtml(item.description)}</div>
                           <button class="btn btn-secondary btn-small btn-copy-desc" data-index="${idx}">
                             ${Icons.copy(14)}
                             <span>Copiar Texto</span>

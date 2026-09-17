@@ -1,4 +1,5 @@
 :root {
+  color-scheme: dark;
   --bg-main: #0f172a;
   --bg-card: #1e293b;
   --bg-card-hover: #26354a;
@@ -27,6 +28,14 @@ body {
   min-height: 100vh;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  color-scheme: dark;
+}
+
+select,
+option {
+  color-scheme: dark;
+  background-color: var(--bg-card);
+  color: var(--text-main);
 }
 
 .dashboard-wrapper {
@@ -57,12 +66,22 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(59, 130, 246, 0.15));
-  color: #22c55e;
-  border: 1px solid rgba(34, 197, 94, 0.3);
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(6, 182, 212, 0.25);
+  transition: transform 0.2s ease;
+  overflow: hidden;
+}
+
+.brand-icon:hover {
+  transform: scale(1.05);
+}
+
+.app-logo-icon {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .brand-title {
@@ -818,6 +837,11 @@ body {
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
+.select-input option {
+  background-color: #1e293b;
+  color: #f8fafc;
+}
+
 .btn-full-width {
   width: 100%;
   justify-content: center;
@@ -1249,4 +1273,418 @@ body {
 
 .neutral-val {
   color: #94a3b8 !important;
+}
+
+/* ==========================================================================
+   Financial Calendar Styles (Google Colors Theme)
+   ========================================================================== */
+
+.calendar-header-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.calendar-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.calendar-nav-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.calendar-select {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 7px 32px 7px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+  color-scheme: dark;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 14px;
+}
+
+.calendar-select:focus {
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.25);
+}
+
+.calendar-select option {
+  background-color: #1e293b;
+  color: #f8fafc;
+  padding: 8px 12px;
+}
+
+.calendar-scope-tabs {
+  display: inline-flex;
+  background-color: var(--bg-main);
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  gap: 4px;
+}
+
+.calendar-scope-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.calendar-scope-btn:hover {
+  color: var(--text-main);
+}
+
+.calendar-scope-btn.active {
+  background-color: #1a73e8;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.calendar-active-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: rgba(26, 115, 232, 0.15);
+  border: 1px solid rgba(26, 115, 232, 0.4);
+  color: #93c5fd;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.calendar-clear-btn {
+  background: transparent;
+  border: none;
+  color: #93c5fd;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: 50%;
+  transition: color 0.15s ease;
+}
+
+.calendar-clear-btn:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Weekday Header */
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.calendar-weekday {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 6px 0;
+}
+
+.calendar-weekday.weekend {
+  color: #f59e0b;
+}
+
+/* Calendar Grid */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+/* Day Cell */
+.cal-day-cell {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  min-height: 110px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.cal-day-cell:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  border-color: #64748b;
+}
+
+.cal-day-cell.other-month {
+  opacity: 0.35;
+  background-color: rgba(15, 23, 42, 0.5);
+}
+
+.cal-day-cell.is-today .cal-day-number {
+  background-color: #1a73e8;
+  color: #ffffff;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cal-day-cell.selected {
+  outline: 2px solid #38bdf8 !important;
+  outline-offset: 2px;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+}
+
+/* MANDATORY RULE: Day with negative sales result is RED (Google Red) */
+.cal-day-cell.cal-day-loss {
+  background-color: rgba(217, 48, 37, 0.18) !important;
+  border: 2px solid #d93025 !important;
+  box-shadow: 0 0 10px rgba(217, 48, 37, 0.25);
+}
+
+.cal-day-cell.cal-day-loss:hover {
+  border-color: #ea4335 !important;
+  box-shadow: 0 4px 16px rgba(217, 48, 37, 0.35);
+}
+
+/* Day with positive sales result is GREEN (Google Green) */
+.cal-day-cell.cal-day-profit {
+  background-color: rgba(30, 142, 62, 0.15);
+  border: 1.5px solid #1e8e3e;
+}
+
+.cal-day-cell.cal-day-profit:hover {
+  border-color: #34a853;
+  box-shadow: 0 4px 16px rgba(30, 142, 62, 0.3);
+}
+
+/* Day with only buys is BLUE (Google Blue) */
+.cal-day-cell.cal-day-buy {
+  background-color: rgba(26, 115, 232, 0.12);
+  border: 1px solid rgba(26, 115, 232, 0.5);
+}
+
+.cal-day-cell.cal-day-buy:hover {
+  border-color: #4285f4;
+}
+
+/* Day Header Inside Cell */
+.cal-day-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.cal-day-number {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.cal-day-badge {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  padding: 1px 5px;
+  border-radius: 4px;
+  line-height: 1.2;
+}
+
+.cal-badge-loss {
+  background-color: #d93025;
+  color: #ffffff;
+}
+
+.cal-badge-profit {
+  background-color: #1e8e3e;
+  color: #ffffff;
+}
+
+.cal-badge-buy {
+  background-color: rgba(26, 115, 232, 0.25);
+  color: #93c5fd;
+  border: 1px solid rgba(26, 115, 232, 0.4);
+}
+
+/* Operations Chips (Google Calendar Style) */
+.cal-chips-container {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow: hidden;
+}
+
+.cal-chip {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  line-height: 1.3;
+}
+
+.cal-chip-buy {
+  background-color: rgba(26, 115, 232, 0.22);
+  color: #bfdbfe;
+  border-left: 2.5px solid #1a73e8;
+}
+
+.cal-chip-sell-profit {
+  background-color: rgba(30, 142, 62, 0.22);
+  color: #bbf7d0;
+  border-left: 2.5px solid #1e8e3e;
+}
+
+.cal-chip-sell-loss {
+  background-color: rgba(217, 48, 37, 0.28);
+  color: #fecaca;
+  border-left: 2.5px solid #d93025;
+}
+
+.cal-chip-more {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: right;
+  padding-right: 2px;
+}
+
+/* Day Detail Panel */
+.cal-detail-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 24px;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cal-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.cal-detail-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cal-detail-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.cal-detail-summary-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cal-legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 10px 14px;
+  background-color: rgba(15, 23, 42, 0.6);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  margin-top: 14px;
+}
+
+.cal-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cal-legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.cal-legend-color.loss {
+  background-color: #d93025;
+}
+
+.cal-legend-color.profit {
+  background-color: #1e8e3e;
+}
+
+.cal-legend-color.buy {
+  background-color: #1a73e8;
+}
+
+.cal-legend-color.neutral {
+  background-color: #5f6368;
 }

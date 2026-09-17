@@ -12,6 +12,7 @@ import { KpiCard } from '../components/KpiCard.ts';
 import { Button } from '../components/Button.ts';
 import { Banner } from '../components/Banner.ts';
 import { Icons } from '../components/Icons.ts';
+import { escapeHtml } from '../utils/sanitize.ts';
 
 export class CorrectionsView {
   private static cachedB3Items: B3PositionItem[] | null = null;
@@ -125,8 +126,8 @@ export class CorrectionsView {
           </div>
           ${
             lastCorrection
-              ? `<button type="button" class="btn btn-secondary" id="btn-rollback-last-header" style="display: inline-flex; align-items: center; gap: 6px;" title="Desfazer a última correção realizada (${lastCorrection.title})">
-                  ${Icons.undo(16)} Desfazer Última Correção (${lastCorrection.ticker})
+              ? `<button type="button" class="btn btn-secondary" id="btn-rollback-last-header" style="display: inline-flex; align-items: center; gap: 6px;" title="Desfazer a última correção realizada (${escapeHtml(lastCorrection.title)})">
+                  ${Icons.undo(16)} Desfazer Última Correção (${escapeHtml(lastCorrection.ticker)})
                 </button>`
               : ''
           }
@@ -154,7 +155,7 @@ export class CorrectionsView {
             <p class="reconciliation-upload-desc">
               ${
                 this.b3Items
-                  ? `Arquivo <strong>${CorrectionsView.cachedFileName || 'posicao-*.xlsx'}</strong> ativo (${this.b3Items.length} ativos oficiais da B3). Conforme você corrige cada item abaixo, a lista é atualizada linha a linha.`
+                  ? `Arquivo <strong>${escapeHtml(CorrectionsView.cachedFileName || 'posicao-*.xlsx')}</strong> ativo (${this.b3Items.length} ativos oficiais da B3). Conforme você corrige cada item abaixo, a lista é atualizada linha a linha.`
                   : `Baixe a planilha <strong>Posição</strong> no Portal da B3 (menu <em>Extratos &gt; Posição &gt; Exportar Excel</em>). O sistema identificará automaticamente opções que viraram pó, desdobramentos (splits), grupamentos e sobras de subscrição.`
               }
             </p>
@@ -324,8 +325,8 @@ export class CorrectionsView {
                             return `
                             <tr>
                               <td>
-                                <span class="font-bold font-mono">${r.ticker}</span>
-                                ${r.productName ? `<div class="text-muted" style="font-size: 11px;">${r.productName}</div>` : ''}
+                                <span class="font-bold font-mono">${escapeHtml(r.ticker)}</span>
+                                ${r.productName ? `<div class="text-muted" style="font-size: 11px;">${escapeHtml(r.productName)}</div>` : ''}
                               </td>
                               <td>${Badge.generateHtml({ label: r.assetType.toUpperCase(), variant: r.assetType as any })}</td>
                               <td class="text-right font-mono">${r.calculatedQty.toLocaleString('pt-BR')}</td>
@@ -336,7 +337,7 @@ export class CorrectionsView {
                                   ${badgeIcon}
                                   <span>${badgeLabel}</span>
                                 </span>
-                                <div class="text-muted" style="font-size: 11px; margin-top: 4px;">${r.description}</div>
+                                <div class="text-muted" style="font-size: 11px; margin-top: 4px;">${escapeHtml(r.description)}</div>
                               </td>
                               <td class="text-right">
                                 ${
@@ -350,7 +351,7 @@ export class CorrectionsView {
                                                </button>`
                                             : ''
                                         }
-                                        <button type="button" class="btn btn-small ${r.type === 'CONVERSION_SUSPECTED' ? 'btn-primary' : 'btn-secondary'} btn-apply-single-recon" data-ticker="${r.ticker}" style="display: inline-flex; align-items: center; gap: 4px;">
+                                        <button type="button" class="btn btn-small ${r.type === 'CONVERSION_SUSPECTED' ? 'btn-primary' : 'btn-secondary'} btn-apply-single-recon" data-ticker="${escapeHtml(r.ticker)}" style="display: inline-flex; align-items: center; gap: 4px;">
                                           ${
                                             r.type === 'CONVERSION_SUSPECTED'
                                               ? `${Icons.refresh(13)} Converter (${r.b3Qty} un)`

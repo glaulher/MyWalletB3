@@ -65,4 +65,63 @@ describe('B3Parser', () => {
     expect(parser.detectAssetType('BOVAW110')).toBe('option');
     expect(parser.detectAssetType('PETR4', 'Opção de Compra')).toBe('option');
   });
+
+  it('should parse trade row with currency R$ prefix and fractional ticker like TAEE11F', () => {
+    const csvWithCurrency = `Data do Negócio;Tipo de Movimentação;Mercado;Prazo/Vencimento;Instituição;Código de Negociação;Quantidade;Preço;Valor
+14/05/2026;Venda;Mercado Fracionário;-;XP INVESTIMENTOS CCTVM S/A;TAEE11F;11;R$ 38,98;R$ 428,78`;
+
+    const operations = parser.parseCsv(csvWithCurrency);
+
+    expect(operations.length).toBe(1);
+    const op = operations[0];
+    expect(op.asset).toBe('TAEE11');
+    expect(op.type).toBe('sell');
+    expect(op.quantity).toBe(11);
+    expect(op.unitPrice).toBe(38.98);
+    expect(op.fees).toBe(0);
+    expect(op.institution).toBe('XP INVESTIMENTOS CCTVM S/A');
+    expect(op.date.getFullYear()).toBe(2026);
+    expect(op.date.getMonth()).toBe(4); // May (0-indexed)
+    expect(op.date.getDate()).toBe(14);
+  });
+
+  it('should detect spreadsheet type as "trades" even with generic file and sheet names', () => {
+    const XLSX = require('xlsx');
+    const wb = XLSX.utils.book_new();
+    const wsData = [
+      [
+        'Data do Negócio',
+        'Tipo de Movimentação',
+        'Mercado',
+        'Prazo/Vencimento',
+        'Instituição',
+        'Código de Negociação',
+        'Quantidade',
+        'Preço',
+        'Valor',
+      ],
+      [
+        '14/05/2026',
+        'Venda',
+        'Mercado Fracionário',
+        '-',
+        'XP INVESTIMENTOS CCTVM S/A',
+        'TAEE11F',
+        11,
+        'R$ 38,98',
+        'R$ 428,78',
+      ],
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+    const detected = parser.detectSpreadsheetType(buf, 'planilha_2026.xlsx');
+    expect(detected).toBe('trades');
+
+    const ops = parser.parseXlsx(buf);
+    expect(ops.length).toBe(1);
+    expect(ops[0].asset).toBe('TAEE11');
+    expect(ops[0].unitPrice).toBe(38.98);
+  });
 });

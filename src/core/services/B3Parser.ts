@@ -33,11 +33,36 @@ export class B3Parser {
       throw new Error('Workbook contains no sheets.');
     }
 
-    // Find the relevant sheet: either named "Negociação" or the first sheet
-    const sheetName =
-      workbook.SheetNames.find(
-        (name) => name.toLowerCase().includes('negocia') || name.toLowerCase().includes('trade'),
-      ) ?? workbook.SheetNames[0];
+    // Find the sheet: either named "Negociação", "Trades", or inspect header rows of all sheets
+    let sheetName = workbook.SheetNames.find(
+      (name) => name.toLowerCase().includes('negocia') || name.toLowerCase().includes('trade'),
+    );
+
+    if (!sheetName) {
+      for (const name of workbook.SheetNames) {
+        const worksheet = workbook.Sheets[name];
+        const raw = XLSX.utils.sheet_to_json<unknown[]>(worksheet, { header: 1, defval: '' });
+        const hasTradeHeaders = raw.slice(0, 10).some((r) => {
+          const s = JSON.stringify(r || '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+          return (
+            s.includes('data do negocio') ||
+            s.includes('codigo de negociacao') ||
+            (s.includes('tipo de movimentacao') && s.includes('quantidade'))
+          );
+        });
+        if (hasTradeHeaders) {
+          sheetName = name;
+          break;
+        }
+      }
+    }
+
+    if (!sheetName) {
+      sheetName = workbook.SheetNames[0];
+    }
 
     const worksheet = workbook.Sheets[sheetName];
     const rawData = XLSX.utils.sheet_to_json<unknown[]>(worksheet, { header: 1, defval: '' });
@@ -55,6 +80,94 @@ export class B3Parser {
       line.split(delimiter).map((cell) => cell.trim().replace(/^["']|["']$/g, '')),
     );
     return this.parseRows(rawRows);
+  }
+
+  /**
+   * Detects whether an Excel file or CSV is Negociação (trades), Posição (position) or Movimentação (movement).
+   */
+  detectSpreadsheetType(
+    input: ArrayBuffer | Uint8Array | string,
+    fileName = '',
+  ): 'trades' | 'position' | 'movement' | 'unknown' {
+    const lowerName = fileName.toLowerCase();
+    if (lowerName.includes('negocia') || lowerName.includes('trade')) return 'trades';
+    if (lowerName.includes('posicao') || lowerName.includes('posiçã')) return 'position';
+    if (lowerName.includes('movimentac') || lowerName.includes('movimenta')) return 'movement';
+
+    if (typeof input === 'string') {
+      const lower = input
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+
+      if (
+        lower.includes('data do negocio') ||
+        lower.includes('codigo de negociacao') ||
+        lower.includes('mercado') ||
+        (lower.includes('tipo de movimentacao') && lower.includes('preco'))
+      ) {
+        return 'trades';
+      }
+      if (lower.includes('entrada/saida')) return 'movement';
+      if (lower.includes('valor atualizado') || lower.includes('preco de fechamento'))
+        return 'position';
+      return 'unknown';
+    }
+
+    try {
+      const workbook = XLSX.read(input, { type: 'array' });
+      const sheetNames = workbook.SheetNames.map((s) =>
+        s
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, ''),
+      );
+
+      if (sheetNames.some((s) => s.includes('negocia') || s.includes('trade'))) return 'trades';
+      if (sheetNames.some((s) => s.includes('movimentac'))) return 'movement';
+      if (
+        sheetNames.some(
+          (s) =>
+            s.includes('posicao') ||
+            s.includes('acao') ||
+            s.includes('fundo de investimento') ||
+            s.includes('tesouro direto') ||
+            s.includes('bdr'),
+        )
+      ) {
+        return 'position';
+      }
+
+      // Check header contents across all sheets
+      for (const name of workbook.SheetNames) {
+        const sheet = workbook.Sheets[name];
+        const rawRows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: '' });
+        for (let i = 0; i < Math.min(rawRows.length, 10); i++) {
+          const rowStr = JSON.stringify(rawRows[i] || '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+
+          // Check trades (unique headers: data do negocio, codigo de negociacao, mercado)
+          if (
+            rowStr.includes('data do negocio') ||
+            rowStr.includes('codigo de negociacao') ||
+            rowStr.includes('mercado') ||
+            (rowStr.includes('tipo de movimentacao') && rowStr.includes('preco'))
+          ) {
+            return 'trades';
+          }
+
+          if (rowStr.includes('entrada/saida')) return 'movement';
+          if (rowStr.includes('valor atualizado') || rowStr.includes('preco de fechamento'))
+            return 'position';
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    return 'unknown';
   }
 
   /**
@@ -102,6 +215,7 @@ export class B3Parser {
     }
 
     const operations: Operation[] = [];
+    const occurrenceMap = new Map<string, number>();
 
     for (let i = headerRowIndex + 1; i < rows.length; i++) {
       const row = rows[i];
@@ -142,7 +256,15 @@ export class B3Parser {
         fees = Math.max(0, Math.round((expectedTotal - totalValue) * 100) / 100);
       }
 
-      const id = `b3-${i}-${normalizedTicker}-${date.getTime()}`;
+      const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+      const instClean = (instRaw ? String(instRaw).trim() : 'DEFAULT')
+        .replace(/[^a-zA-Z0-9]/g, '')
+        .toUpperCase();
+      const priceCents = Math.round(unitPrice * 100);
+      const opKey = `trade-${dateStr}-${normalizedTicker}-${type}-${quantity}-${priceCents}-${instClean}`;
+      const occurrence = (occurrenceMap.get(opKey) || 0) + 1;
+      occurrenceMap.set(opKey, occurrence);
+      const id = `${opKey}-${occurrence}`;
 
       operations.push(
         new Operation(
@@ -287,9 +409,12 @@ export class B3Parser {
   }
 
   private parseNumber(val: unknown): number {
-    if (typeof val === 'number') return val;
+    if (typeof val === 'number') return isNaN(val) ? 0 : val;
     let str = String(val || '').trim();
-    if (!str) return 0;
+    if (!str || str === '-') return 0;
+
+    const isNegative = str.includes('-') || str.startsWith('(');
+    str = str.replace(/[R$\s()]/gi, '').replace('-', '');
 
     // Handle Brazilian decimal format: 1.000,00 -> 1000.00
     if (str.includes(',') && str.includes('.')) {
@@ -299,7 +424,8 @@ export class B3Parser {
     }
 
     const num = parseFloat(str);
-    return isNaN(num) ? 0 : num;
+    if (isNaN(num)) return 0;
+    return isNegative ? -num : num;
   }
 
   /**

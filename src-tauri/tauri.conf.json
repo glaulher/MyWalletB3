@@ -10,16 +10,19 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "withGlobalTauri": true,
+    "withGlobalTauri": false,
     "windows": [
       {
-        "title": "mywalletb3",
-        "width": 800,
-        "height": 600
+        "label": "main",
+        "title": "MyWalletB3 — Gestão de Carteira B3",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 900,
+        "minHeight": 600
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://query1.finance.yahoo.com https://query2.finance.yahoo.com https://brapi.dev;"
     }
   },
   "bundle": {

@@ -149,17 +149,25 @@ export class MarketQuoteService {
     const cleanTicker = ticker.toUpperCase().trim().replace(/\.SA$/, '');
     const b3Symbol = `${cleanTicker}.SA`;
 
+    // In Tauri desktop production, there is no Vite proxy; direct HTTPS mirrors are used directly.
+    const isTauriDesktop =
+      typeof window !== 'undefined' &&
+      (window.location.protocol === 'tauri:' ||
+        window.location.hostname === 'tauri.localhost' ||
+        '__TAURI_INTERNALS__' in window);
+
     // Ordered list of candidate endpoints
-    const endpoints = [
-      // 1. Vite proxy mirror 1 (during dev)
-      `/api/yahoo1/v8/finance/chart/${b3Symbol}?interval=1d&range=1d`,
-      // 2. Vite proxy mirror 2 (during dev)
-      `/api/yahoo2/v8/finance/chart/${b3Symbol}?interval=1d&range=1d`,
-      // 3. Direct Yahoo mirror 1
-      `https://query1.finance.yahoo.com/v8/finance/chart/${b3Symbol}?interval=1d&range=1d`,
-      // 4. Direct Yahoo mirror 2
-      `https://query2.finance.yahoo.com/v8/finance/chart/${b3Symbol}?interval=1d&range=1d`,
-    ];
+    const endpoints = isTauriDesktop
+      ? [
+          `https://query1.finance.yahoo.com/v8/finance/chart/${b3Symbol}?interval=1d&range=1d`,
+          `https://query2.finance.yahoo.com/v8/finance/chart/${b3Symbol}?interval=1d&range=1d`,
+        ]
+      : [
+          `/api/yahoo1/v8/finance/chart/${b3Symbol}?interval=1d&range=1d`,
+          `/api/yahoo2/v8/finance/chart/${b3Symbol}?interval=1d&range=1d`,
+          `https://query1.finance.yahoo.com/v8/finance/chart/${b3Symbol}?interval=1d&range=1d`,
+          `https://query2.finance.yahoo.com/v8/finance/chart/${b3Symbol}?interval=1d&range=1d`,
+        ];
 
     // Optional Brapi endpoint if token is present
     const brapiToken = this.getBrapiToken();
@@ -334,7 +342,15 @@ export class MarketQuoteService {
   }
 
   getBrapiToken(): string | null {
-    if (typeof localStorage === 'undefined') return null;
-    return localStorage.getItem(MarketQuoteService.BRAPI_TOKEN_KEY);
+    if (typeof localStorage !== 'undefined') {
+      const stored = localStorage.getItem(MarketQuoteService.BRAPI_TOKEN_KEY);
+      if (stored) return stored;
+    }
+    try {
+      // Fallback to optional env var during local development if configured
+      return (import.meta as any).env?.VITE_BRAPI_TOKEN || null;
+    } catch {
+      return null;
+    }
   }
 }

@@ -11,11 +11,18 @@ export class InMemoryOperationRepository implements IOperationRepository {
   }
 
   async add(operation: Operation): Promise<void> {
-    this.operations.push(operation);
+    const existingIdx = this.operations.findIndex((op) => op.id === operation.id);
+    if (existingIdx >= 0) {
+      this.operations[existingIdx] = operation;
+    } else {
+      this.operations.push(operation);
+    }
   }
 
   async addAll(operations: Operation[]): Promise<void> {
-    this.operations.push(...operations);
+    for (const op of operations) {
+      await this.add(op);
+    }
   }
 
   async clear(): Promise<void> {
@@ -37,7 +44,9 @@ export class InMemoryOperationRepository implements IOperationRepository {
   }
 
   async getBatches(): Promise<ImportBatch[]> {
-    return [...this.batches].sort((a, b) => b.importedAt.getTime() - a.importedAt.getTime());
+    return [...this.batches]
+      .reverse()
+      .sort((a, b) => b.importedAt.getTime() - a.importedAt.getTime());
   }
 
   async saveBatch(batch: ImportBatch): Promise<void> {

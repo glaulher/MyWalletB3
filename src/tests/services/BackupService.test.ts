@@ -56,4 +56,33 @@ describe('BackupService', () => {
 
     expect(backupService.importBackup('invalid-json')).rejects.toThrow();
   });
+
+  it('should preserve existing data and not clear if validation fails (atomic restore)', async () => {
+    const opRepo = new InMemoryOperationRepository();
+    const assetRepo = new InMemoryAssetRepository();
+    const backupService = new BackupService(opRepo, assetRepo);
+
+    await assetRepo.save(new Asset('VALE3', 'stock', 'Mineração'));
+    await opRepo.add(
+      new Operation('op_exist', new Date(2026, 5, 1), 'VALE3', 'buy', 50, 60, 0, 'BTG'),
+    );
+
+    const corruptBackup = JSON.stringify({
+      appName: 'MyWalletB3',
+      version: '1.0.0',
+      data: {
+        assets: [{ ticker: 'B3SA3', type: 'stock' }],
+        operations: [{ id: 'op_bad', date: 'invalid-date', asset: 'B3SA3', type: 'buy' }],
+      },
+    });
+
+    await expect(backupService.importBackup(corruptBackup)).rejects.toThrow(
+      'Arquivo de backup corrompido: data de operação inválida.',
+    );
+
+    // Verify existing data was NOT wiped out
+    const existingOps = await opRepo.getAll();
+    expect(existingOps.length).toBe(1);
+    expect(existingOps[0].asset).toBe('VALE3');
+  });
 });

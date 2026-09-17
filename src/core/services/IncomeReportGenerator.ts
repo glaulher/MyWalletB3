@@ -1,5 +1,6 @@
 import { Operation } from '../entities/Operation.ts';
 import { AssetType } from '../entities/Asset.ts';
+import { Movement } from '../entities/Movement.ts';
 import { B3Parser } from './B3Parser.ts';
 import { AveragePriceCalculator } from './AveragePriceCalculator.ts';
 
@@ -15,6 +16,17 @@ export interface IncomeReportItem {
   previousYearCost: number; // 31/12 previous year
   institution: string;
   description: string;
+}
+
+export interface TaxIncomeDeclarationItem {
+  type: 'exempt' | 'exclusive';
+  code: string; // "09", "26", "10"
+  typeName: string;
+  ticker: string;
+  assetType: AssetType;
+  totalValue: number;
+  description: string;
+  institution?: string;
 }
 
 export class IncomeReportGenerator {
@@ -131,5 +143,87 @@ export class IncomeReportGenerator {
           groupName: '99 - Outros Bens e Direitos (Opções e Derivativos)',
         };
     }
+  }
+
+  /**
+   * Generates annual tax declaration items for Exempt and Exclusive Incomes (IRPF).
+   */
+  generateTaxIncomeReport(movements: Movement[], targetYear: number): TaxIncomeDeclarationItem[] {
+    const yearMovements = movements.filter(
+      (m) => m.isIncome && m.date.getFullYear() === targetYear,
+    );
+
+    const assetGroups = new Map<
+      string,
+      {
+        asset: string;
+        category: string;
+        totalValue: number;
+        institution?: string;
+      }
+    >();
+
+    for (const mov of yearMovements) {
+      const key = `${mov.asset.toUpperCase()}-${mov.category}`;
+      const entry = assetGroups.get(key) || {
+        asset: mov.asset.toUpperCase(),
+        category: mov.category,
+        totalValue: 0,
+        institution: mov.institution,
+      };
+      entry.totalValue += mov.totalValue;
+      if (mov.institution) entry.institution = mov.institution;
+      assetGroups.set(key, entry);
+    }
+
+    const items: TaxIncomeDeclarationItem[] = [];
+
+    for (const group of assetGroups.values()) {
+      if (group.totalValue <= 0) continue;
+      const assetType = this.parser.detectAssetType(group.asset);
+      const valStr = group.totalValue.toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+
+      if (group.category === 'dividend') {
+        items.push({
+          type: 'exempt',
+          code: '09',
+          typeName: 'Rendimentos Isentos e Não Tributáveis (09 - Lucros e dividendos recebidos)',
+          ticker: group.asset,
+          assetType,
+          totalValue: group.totalValue,
+          institution: group.institution,
+          description: `Dividendos recebidos da empresa/ativo ${group.asset} no ano fiscal de ${targetYear}, totalizando R$ ${valStr}.`,
+        });
+      } else if (group.category === 'yield') {
+        items.push({
+          type: 'exempt',
+          code: '26',
+          typeName:
+            'Rendimentos Isentos e Não Tributáveis (26 - Outros / Rendimentos de FII e FI-Infra)',
+          ticker: group.asset,
+          assetType,
+          totalValue: group.totalValue,
+          institution: group.institution,
+          description: `Rendimentos isentos creditados pelo fundo imobiliário/fi-infra ${group.asset} no ano fiscal de ${targetYear}, totalizando R$ ${valStr}.`,
+        });
+      } else if (group.category === 'jcp') {
+        items.push({
+          type: 'exclusive',
+          code: '10',
+          typeName:
+            'Rendimentos Sujeitos à Tributação Exclusiva (10 - Juros sobre capital próprio)',
+          ticker: group.asset,
+          assetType,
+          totalValue: group.totalValue,
+          institution: group.institution,
+          description: `Juros sobre Capital Próprio (JCP) creditados por ${group.asset} no ano fiscal de ${targetYear}, totalizando R$ ${valStr} com imposto retido na fonte.`,
+        });
+      }
+    }
+
+    return items.sort((a, b) => a.code.localeCompare(b.code) || a.ticker.localeCompare(b.ticker));
   }
 }

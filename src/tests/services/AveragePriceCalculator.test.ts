@@ -5,20 +5,22 @@ import { AveragePriceCalculator } from '../../core/services/AveragePriceCalculat
 describe('AveragePriceCalculator', () => {
   const calculator = new AveragePriceCalculator();
 
-  it('should sort operations primarily by type (buy before sell) and secondarily by date ascending', () => {
+  it('should sort operations chronologically by date ascending, with buy before sell on the same date', () => {
     const op1 = new Operation('1', new Date(2026, 7, 25), 'PETR4', 'sell', 10, 40, 0);
-    const op2 = new Operation('2', new Date(2026, 7, 20), 'PETR4', 'buy', 10, 30, 0);
-    const op3 = new Operation('3', new Date(2026, 7, 15), 'PETR4', 'buy', 10, 20, 0);
-    const op4 = new Operation('4', new Date(2026, 7, 10), 'PETR4', 'sell', 5, 25, 0);
+    const op2 = new Operation('2', new Date(2026, 7, 20), 'PETR4', 'sell', 10, 30, 0);
+    const op3 = new Operation('3', new Date(2026, 7, 20), 'PETR4', 'buy', 10, 20, 0);
+    const op4 = new Operation('4', new Date(2026, 7, 10), 'PETR4', 'buy', 5, 25, 0);
 
     const sorted = calculator.sortOperations([op1, op2, op3, op4]);
 
-    // All buys should come first, ordered from oldest to newest
-    expect(sorted[0].id).toBe('3'); // Buy 2026-08-15
-    expect(sorted[1].id).toBe('2'); // Buy 2026-08-20
-    // All sells come after buys, ordered from oldest to newest
-    expect(sorted[2].id).toBe('4'); // Sell 2026-08-10
-    expect(sorted[3].id).toBe('1'); // Sell 2026-08-25
+    // Chronological order:
+    // 2026-08-10: op4 (buy)
+    // 2026-08-20: op3 (buy) before op2 (sell) on the same date
+    // 2026-08-25: op1 (sell)
+    expect(sorted[0].id).toBe('4'); // 2026-08-10 Buy
+    expect(sorted[1].id).toBe('3'); // 2026-08-20 Buy (same day tie-breaker before sell)
+    expect(sorted[2].id).toBe('2'); // 2026-08-20 Sell
+    expect(sorted[3].id).toBe('1'); // 2026-08-25 Sell
   });
 
   it('should calculate weighted average price on multiple buys', () => {

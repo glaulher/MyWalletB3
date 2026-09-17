@@ -6,18 +6,21 @@ export class AveragePriceCalculator {
   private b3Parser = new B3Parser();
 
   /**
-   * Sorts operations according to user specifications:
-   * 1. First by "tipo de movimentação" (Buy / Compra before Sell / Venda)
-   * 2. Second by "data do negócio" from oldest to newest (ascending date)
+   * Sorts operations chronologically by date/time ascending.
+   * On same date/time (intraday), purchases ('buy') are processed before sales ('sell').
    */
   sortOperations(operations: Operation[]): Operation[] {
     return [...operations].sort((a, b) => {
-      // 1. Tipo de movimentação: 'buy' comes before 'sell'
+      // 1. Data do negócio: oldest to newest
+      const timeDiff = a.date.getTime() - b.date.getTime();
+      if (timeDiff !== 0) {
+        return timeDiff;
+      }
+      // 2. Intraday tie-breaker: 'buy' comes before 'sell'
       if (a.type !== b.type) {
         return a.type === 'buy' ? -1 : 1;
       }
-      // 2. Data do negócio: oldest to newest
-      return a.date.getTime() - b.date.getTime();
+      return 0;
     });
   }
 

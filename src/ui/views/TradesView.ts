@@ -8,6 +8,8 @@ import {
 import { Badge } from '../components/Badge.ts';
 import { KpiCard } from '../components/KpiCard.ts';
 import { Icons } from '../components/Icons.ts';
+import { InfiniteScroll } from '../components/InfiniteScroll.ts';
+import { escapeHtml } from '../utils/sanitize.ts';
 
 export class TradesView {
   private container: HTMLElement;
@@ -17,6 +19,7 @@ export class TradesView {
   private filterTicker = '';
   private filterCategory = 'all';
   private filterTradeType = 'all'; // 'all' | 'buy' | 'sell'
+  private infiniteScroll: InfiniteScroll<Operation> | null = null;
 
   constructor(
     container: HTMLElement,
@@ -77,9 +80,10 @@ export class TradesView {
         return matchTicker && matchType;
       })
       .sort((a, b) => {
-        // Buys before sells, then date ascending
+        const timeDiff = a.date.getTime() - b.date.getTime();
+        if (timeDiff !== 0) return timeDiff;
         if (a.type !== b.type) return a.type === 'buy' ? -1 : 1;
-        return a.date.getTime() - b.date.getTime();
+        return 0;
       });
 
     this.container.innerHTML = `
@@ -131,7 +135,7 @@ export class TradesView {
             </div>
             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
               <input type="text" id="trades-filter-ticker" placeholder="Buscar Ticker (ex: CPTI11)..."
-                     class="text-input" value="${this.filterTicker}" style="padding: 6px 12px; font-size: 13px;" />
+                     class="text-input" value="${escapeHtml(this.filterTicker)}" style="padding: 6px 12px; font-size: 13px;" />
               <div class="btn-group" id="trades-category-group">
                 <button type="button" class="btn-filter ${this.filterCategory === 'all' ? 'selected' : ''}" data-cat="all">Todas</button>
                 <button type="button" class="btn-filter ${this.filterCategory === 'fii' ? 'selected' : ''}" data-cat="fii">FII</button>
@@ -197,7 +201,7 @@ export class TradesView {
 
                       return `
                         <tr>
-                          <td class="font-bold font-mono">${s.ticker}</td>
+                          <td class="font-bold font-mono">${escapeHtml(s.ticker)}</td>
                           <td>${Badge.generateHtml({ label: typeLabel, variant: badgeVariant })}</td>
                           <td class="text-right font-mono font-bold" style="color: #34d399;">${s.totalBoughtQty.toLocaleString('pt-BR')}</td>
                           <td class="text-right font-mono">R$ ${s.avgBuyPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
@@ -251,35 +255,61 @@ export class TradesView {
                     <th>Instituição</th>
                   </tr>
                 </thead>
-                <tbody>
-                  ${filteredOps
-                    .map((op: Operation) => {
-                      const dateFormatted = `${String(op.date.getDate()).padStart(2, '0')}/${String(op.date.getMonth() + 1).padStart(2, '0')}/${op.date.getFullYear()}`;
-                      const isBuy = op.type === 'buy';
-                      const totalVal = op.quantity * op.unitPrice + (isBuy ? op.fees : -op.fees);
-
-                      return `
-                        <tr>
-                          <td class="font-mono">${dateFormatted}</td>
-                          <td>${Badge.generateHtml({ label: isBuy ? 'Compra' : 'Venda', variant: isBuy ? 'buy' : 'sell' })}</td>
-                          <td class="font-bold font-mono">${op.asset}</td>
-                          <td class="text-right font-mono">${op.quantity.toLocaleString('pt-BR')}</td>
-                          <td class="text-right font-mono">R$ ${op.unitPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                          <td class="text-right font-mono text-muted">R$ ${op.fees.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                          <td class="text-right font-mono font-bold">R$ ${totalVal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                          <td class="text-muted">${op.institution || '-'}</td>
-                        </tr>
-                      `;
-                    })
-                    .join('')}
-                </tbody>
+                <tbody id="trades-ops-tbody"></tbody>
               </table>
+            </div>
+            <div id="trades-ops-status-bar" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 12px;">
+              <span id="trades-ops-count-label" style="font-size: 13px; color: var(--text-muted);"></span>
+              ${InfiniteScroll.generateSentinelHtml('trades-sentinel', 'Carregando mais operações...')}
             </div>
           `
           }
         </div>
       </div>
     `;
+
+    // Initialize Infinite Scroll for detailed operations table
+    if (filteredOps.length > 0) {
+      const tbody = this.container.querySelector('#trades-ops-tbody') as HTMLElement | null;
+      const sentinel = this.container.querySelector('#trades-sentinel') as HTMLElement | null;
+      const countLabel = this.container.querySelector(
+        '#trades-ops-count-label',
+      ) as HTMLElement | null;
+
+      if (tbody) {
+        if (this.infiniteScroll) {
+          this.infiniteScroll.destroy();
+        }
+
+        this.infiniteScroll = new InfiniteScroll<Operation>({
+          targetElement: tbody,
+          items: filteredOps,
+          pageSize: 40,
+          sentinel,
+          statusElement: countLabel,
+          statusFormatter: (rendered, total) =>
+            `Exibindo <strong>${rendered}</strong> de <strong>${total}</strong> movimentações (scroll para carregar mais)`,
+          renderItem: (op: Operation) => {
+            const dateFormatted = `${String(op.date.getDate()).padStart(2, '0')}/${String(op.date.getMonth() + 1).padStart(2, '0')}/${op.date.getFullYear()}`;
+            const isBuy = op.type === 'buy';
+            const totalVal = op.quantity * op.unitPrice + (isBuy ? op.fees : -op.fees);
+
+            return `
+              <tr>
+                <td class="font-mono">${escapeHtml(dateFormatted)}</td>
+                <td>${Badge.generateHtml({ label: isBuy ? 'Compra' : 'Venda', variant: isBuy ? 'buy' : 'sell' })}</td>
+                <td class="font-bold font-mono">${escapeHtml(op.asset)}</td>
+                <td class="text-right font-mono">${op.quantity.toLocaleString('pt-BR')}</td>
+                <td class="text-right font-mono">R$ ${op.unitPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td class="text-right font-mono text-muted">R$ ${op.fees.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                <td class="text-right font-mono font-bold">R$ ${totalVal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td class="text-muted">${escapeHtml(op.institution || '-')}</td>
+              </tr>
+            `;
+          },
+        });
+      }
+    }
 
     this.bindEvents();
   }
