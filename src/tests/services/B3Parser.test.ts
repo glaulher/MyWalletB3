@@ -1,14 +1,12 @@
 import { describe, it, expect } from 'bun:test';
-import * as fs from 'fs';
-import * as path from 'path';
 import { B3Parser } from '../../core/services/B3Parser.ts';
+import { createMockTradesBuffer } from '../fixtures/mockB3Data.ts';
 
 describe('B3Parser', () => {
   const parser = new B3Parser();
 
   it('should parse actual B3 excel file correctly', async () => {
-    const filePath = path.resolve('negociacao-2026-09-15-14-41-25.xlsx');
-    const buffer = fs.readFileSync(filePath);
+    const buffer = createMockTradesBuffer();
 
     const operations = await parser.parse(buffer);
 

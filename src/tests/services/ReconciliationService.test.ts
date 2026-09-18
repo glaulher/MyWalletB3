@@ -1,16 +1,16 @@
 import { describe, it, expect } from 'bun:test';
-import * as fs from 'fs';
 import { B3PositionParser } from '../../core/services/B3PositionParser.ts';
 import { ReconciliationService } from '../../core/services/ReconciliationService.ts';
 import { ConsolidatedPosition } from '../../core/entities/ConsolidatedPosition.ts';
 import { Operation } from '../../core/entities/Operation.ts';
+import { createMockPositionsBuffer } from '../fixtures/mockB3Data.ts';
 
 describe('B3PositionParser & ReconciliationService', () => {
   const parser = new B3PositionParser();
   const service = new ReconciliationService();
 
   it('should parse actual B3 position spreadsheet with 58 items and correct types', () => {
-    const buffer = fs.readFileSync('posicao-2026-09-15-20-31-34.xlsx');
+    const buffer = createMockPositionsBuffer();
     const items = parser.parse(buffer);
 
     expect(items.length).toBe(58);

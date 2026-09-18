@@ -1,10 +1,9 @@
 import { describe, it, expect } from 'bun:test';
-import * as fs from 'fs';
-import * as path from 'path';
 import { DashboardController } from '../../core/controllers/DashboardController.ts';
 import { InMemoryOperationRepository } from '../../infrastructure/repositories/InMemoryOperationRepository.ts';
 import { InMemoryAssetRepository } from '../../infrastructure/repositories/InMemoryAssetRepository.ts';
 import { InMemoryMovementRepository } from '../../infrastructure/repositories/InMemoryMovementRepository.ts';
+import { createMockTradesBuffer } from '../fixtures/mockB3Data.ts';
 
 describe('DashboardController', () => {
   it('should import xlsx file and return full summary with positions and allocations', async () => {
@@ -13,8 +12,7 @@ describe('DashboardController', () => {
       new InMemoryAssetRepository(),
       new InMemoryMovementRepository(),
     );
-    const filePath = path.resolve('negociacao-2026-09-15-14-41-25.xlsx');
-    const buffer = fs.readFileSync(filePath);
+    const buffer = createMockTradesBuffer();
 
     const summary = await controller.importFile(buffer, 'negociacao.xlsx');
 
@@ -43,8 +41,7 @@ describe('DashboardController', () => {
       new InMemoryAssetRepository(),
       new InMemoryMovementRepository(),
     );
-    const filePath = path.resolve('negociacao-2026-09-15-14-41-25.xlsx');
-    const buffer = fs.readFileSync(filePath);
+    const buffer = createMockTradesBuffer();
 
     await controller.importFile(buffer, 'lote1.xlsx');
     let summary = await controller.load();
@@ -63,8 +60,7 @@ describe('DashboardController', () => {
       new InMemoryAssetRepository(),
       new InMemoryMovementRepository(),
     );
-    const filePath = path.resolve('negociacao-2026-09-15-14-41-25.xlsx');
-    const buffer = fs.readFileSync(filePath);
+    const buffer = createMockTradesBuffer();
 
     await controller.importFile(buffer);
     let summary = await controller.load();

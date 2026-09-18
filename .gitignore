@@ -15,11 +15,28 @@ dist/
 dist-ssr/
 out/
 
-# Database & local data
+# Database & local data (CRITICAL: Private data, never commit)
 *.db
+*.db-shm
+*.db-wal
+*.db-journal
 *.sqlite
 *.sqlite3
+*.sqlite-journal
 *.local
+
+# Personal Investor Data & Spreadsheets (CRITICAL: Private data, never commit)
+*.xlsx
+*.xls
+*.csv
+*.tsv
+*.ods
+
+# Backups & Data Exports
+*backup*.json
+*export*.json
+backups/
+*.dump
 
 # Rust / Tauri build artifacts
 target/
@@ -34,6 +51,11 @@ src-tauri/target/
 .vite/
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# AI Assistant Context & Prompts
+AGENTS.md
+contexto.md
+specs.md
 
 # Editor directories and files
 .vscode/*
